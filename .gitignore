@@ -1,0 +1,13 @@
+# Build output and release binaries
+artifacts/
+bin/
+obj/
+.vs/
+*.dll
+*.exe
+*.pdb
+*.il
+*.csproj.user
+
+# Local reverse-engineering scratch files
+analysis/
