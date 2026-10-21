@@ -11,7 +11,14 @@ internal static class StashItemModelInitPatch
 	{
 		try
 		{
-			if ((!(__instance is StashWeaponItemModel) && !(__instance is CircleOfCultistsStashWeaponItemModel)) || (Object)(object)prefab == (Object)null)
+			if (!(__instance is StashWeaponItemModel) && !(__instance is CircleOfCultistsStashWeaponItemModel))
+			{
+				return;
+			}
+			OpticRenderPolicy.ScanHierarchy(
+				((Component)__instance).transform,
+				"hideout weapon display StashItemModel.Init");
+			if ((Object)(object)prefab == (Object)null)
 			{
 				return;
 			}
@@ -20,14 +27,9 @@ internal static class StashItemModelInitPatch
 			{
 				if (!((Object)(object)val == (Object)null))
 				{
-					if ((Object)(object)val.LensRenderer != (Object)null)
-					{
-						val.LensFade(true);
-					}
-					if (((Behaviour)val).enabled)
-					{
-						((Behaviour)val).enabled = false;
-					}
+					OpticRenderPolicy.ApplyOpticState(
+						val,
+						"hideout weapon display StashItemModel.Init");
 					HeldScopeOnlyState.StashBlocked++;
 					HeldScopeOnlyState.RecordStashLensHidden(val, __instance);
 				}

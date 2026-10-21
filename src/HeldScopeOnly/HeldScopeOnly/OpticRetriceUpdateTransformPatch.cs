@@ -13,8 +13,8 @@ internal static class OpticRetriceUpdateTransformPatch
 		}
 		catch (Exception ex)
 		{
-			HeldScopeOnlyLog.WriteLine("OpticRetrice.UpdateTransform filter exception; allowing vanilla: " + ex);
-			return true;
+			HeldScopeOnlyLog.WriteLine("OpticRetrice.UpdateTransform filter exception; blocking reticle: " + ex);
+			return false;
 		}
 	}
 }

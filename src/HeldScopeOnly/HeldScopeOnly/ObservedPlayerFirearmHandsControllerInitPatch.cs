@@ -22,6 +22,9 @@ internal static class ObservedPlayerFirearmHandsControllerInitPatch
 		try
 		{
 			HeldScopeOnlyState.RegisterRemoteWeaponRoot(__instance._weaponHierarchy);
+			OpticRenderPolicy.ScanHierarchy(
+				__instance._weaponHierarchy,
+				"remote ObservedPlayerFirearmHandsController.Initialize");
 		}
 		catch (Exception ex)
 		{

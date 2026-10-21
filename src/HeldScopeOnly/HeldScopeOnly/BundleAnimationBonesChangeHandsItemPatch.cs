@@ -15,6 +15,9 @@ internal static class BundleAnimationBonesChangeHandsItemPatch
 			{
 				Transform transform = itemObject.Hierarchy.GetTransform((ECharacterWeaponBones)5);
 				HeldScopeOnlyState.RegisterRemoteWeaponRoot(transform);
+				OpticRenderPolicy.ScanHierarchy(
+					transform,
+					"remote BundleAnimationBones.ChangeHandsItem");
 			}
 		}
 		catch (Exception ex)

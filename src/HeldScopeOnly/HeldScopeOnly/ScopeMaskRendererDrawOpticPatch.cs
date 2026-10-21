@@ -10,13 +10,13 @@ internal static class ScopeMaskRendererDrawOpticPatch
 	{
 		try
 		{
-			if (!HeldScopeOnlyState.TryGetLocalCurrentSights(out var opticSight, out var _, out var reason))
+			if (!OpticRenderPolicy.TryGetAllowedLocalOptic(out var localOptic))
 			{
-				HeldScopeOnlyState.RecordDrawOpticBlock(reason);
+				HeldScopeOnlyState.RecordDrawOpticBlock("local held optic is not aiming or not active");
 				return false;
 			}
 			OpticSight currentOpticSight = __instance.CurrentOpticSight;
-			if ((Object)(object)opticSight != (Object)null && object.ReferenceEquals(currentOpticSight, opticSight))
+			if (object.ReferenceEquals(currentOpticSight, localOptic))
 			{
 				return true;
 			}

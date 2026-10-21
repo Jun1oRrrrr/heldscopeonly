@@ -18,8 +18,8 @@ internal static class OpticRetriceSetOpticSightPatch
 		}
 		catch (Exception ex)
 		{
-			HeldScopeOnlyLog.WriteLine("OpticRetrice.SetOpticSight filter exception; allowing vanilla: " + ex);
-			return true;
+			HeldScopeOnlyLog.WriteLine("OpticRetrice.SetOpticSight filter exception; blocking optic: " + ex);
+			return false;
 		}
 	}
 }

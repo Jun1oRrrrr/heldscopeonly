@@ -16,45 +16,42 @@ same DLL locally. The Fika dedicated server and headless client do not need it.
 
 - SPT version: `4.1.6`
 - Runtime: BepInEx
-- Plugin assembly: `HeldScopeOnly.dll`
+- Plugin assembly: `HeldScopeOnly.1.9.1.dll`
 
 ## Installed Artifact
 
-- Plugin version: `1.7.4`
+- Plugin version: `1.9.1`
 - BepInEx GUID: `local.heldscopeonly`
-- Release: GitHub Releases, tag `v1.7.4`
 - SHA256:
-  `F28F79884ABDB6FB2D531AED17B4BCF2A1BD88F5B1E76CA79860893EBBCFB132`
+  `E133CD0DB6AAA4F50E8617D7109BCB9FDBED921640EC1BF3D917E54D4F746A3D`
 
 The repository contains the complete plugin source. The compiled DLL is
-distributed only as a release asset.
+distributed as a release asset.
 
-The `1.7.3` build is superseded and should not be deployed. The previously
-installed `1.7.2` build is preserved for rollback.
+All `1.6`, `1.7`, `1.8`, `1.9.0`, and earlier builds are superseded and should
+not be deployed.
 
-## 1.7.4 Changes
+## 1.9.1 Changes
 
-- Fixes Fika clients seeing only the AI scope mount or frame.
-- Fixes AI and remote-player scope lenses becoming transparent after a weapon,
-  scope-mode, or observed-player visual rebuild.
-- Keeps vanilla scope-mode selection and external scope geometry visible on
-  remote players and AI.
-- Forces non-local `OpticSight.LensFade` calls to show the external lens.
-- Re-shows the external lens in both remote `OpticSight.OnEnable` and
-  `OpticSight.OnDisable`; neither event publishes the global optic state.
-- Keeps `OpticCameraManager`, `ScopeMaskRenderer`, `OpticRetrice`, and
-  collimator filtering active, so remote/AI scope interiors still do not
-  render.
-- Leaves the local held-scope path unchanged, including local scope mode
-  selection.
-- Leaves the `1.7.2` close-scope DynamicExternalResolution restore logic
-  unchanged.
+- Clears the local optic aiming state immediately on both the frame-polling
+  path and the `FirearmController.IsAiming` setter path.
+- Fixes the grenade-to-primary-weapon sequence leaving the previous aiming
+  state stuck and preventing the local scope interior from being restored.
+- Detects a missing DynamicExternalResolution installation only once instead of
+  retrying the restore hook on a fixed frame interval.
+- Checks only the currently allowed local optic before each camera render.
+  Previously tracked lenses are not traversed on every frame; destroyed-lens
+  cleanup is spread across frames.
+- Keeps external lens glass visible on AI, Fika remote players, dropped
+  weapons, and hideout displays while suppressing every non-local scope
+  interior.
 
 ## Runtime Rules
 
 Local held scope:
 
-- Full internal and external rendering remains enabled.
+- The scope interior renders only while the local player is aiming through the
+  currently held optic.
 - Scope mode changes use the vanilla visual selection path.
 - Closing a scope restores DynamicExternalResolution.
 
@@ -126,18 +123,19 @@ Hideout weapon rack:
       not under a previously registered weapon root.
 
 13. Local aiming and resolution restore
+    - The frame fallback resets `_lastLocalOpticAiming` as soon as aiming ends.
     - `FirearmController.IsAiming` setter postfix schedules the authoritative
-      close-scope restore.
-    - The frame fallback remains active if the setter patch cannot be installed.
+      close-scope restore and resets the aiming flag immediately.
 
 ## Deployment
 
 Exit Escape From Tarkov and the launcher before replacing the DLL. BepInEx does
 not reload a replaced plugin in an existing process.
 
-Install `HeldScopeOnly.dll` through the BepInEx plugin loader on every graphical
-Fika client that observes remote players or AI. Do not install it only on one
-observer and expect another client's rendering to change.
+Install `HeldScopeOnly.1.9.1.dll` through the BepInEx plugin loader on every
+graphical Fika client that observes remote players or AI. Remove all older
+`HeldScopeOnly` DLLs before installing the new build. Do not install it only
+on one observer and expect another client's rendering to change.
 
 The Fika headless client and dedicated server need no copy.
 
@@ -147,7 +145,7 @@ After a complete restart, the BepInEx loader log and the plugin-owned
 `HeldScopeOnly.log` must contain:
 
 ```text
-HeldScopeOnly 1.7.4 loaded
+HeldScopeOnly 1.9.1 loaded
 ```
 
 When a remote player or AI optic initializes, expect:
@@ -155,8 +153,12 @@ When a remote player or AI optic initializes, expect:
 ```text
 fika-remote-register=
 fika-remote-optic-found=
-fika-remote-lens-shown=
+fika-remote-lens-suppressed=
 ```
+
+When DynamicExternalResolution is not installed, expect one
+`external-resolution-not-installed` line. The plugin must not keep retrying
+that restore hook.
 
 The following obsolete diagnostics must not appear from this build:
 
@@ -182,7 +184,7 @@ Runtime acceptance:
 ## Build
 
 Build against the target game's managed assemblies and BepInEx libraries with
-the included `build-1.7.4.rsp` response file. The response file is configured
+the included `build-1.9.1.rsp` response file. The response file is configured
 for SPT `4.1.6`.
 
 The expected compiler warning is only:
@@ -193,5 +195,5 @@ warning CS2023: /noconfig is specified in a response file and is ignored
 
 ## Rollback
 
-Use the previously installed `1.7.2` DLL when rolling back. Replace the current
-plugin assembly, remove the plugin-owned log, and restart the game completely.
+Use `HeldScopeOnly.1.9.0.dll` when rolling back. Replace the current plugin
+assembly, remove the plugin-owned log, and restart the game completely.

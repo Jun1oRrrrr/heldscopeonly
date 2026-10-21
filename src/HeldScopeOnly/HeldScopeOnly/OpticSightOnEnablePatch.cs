@@ -6,26 +6,25 @@ namespace HeldScopeOnly;
 
 internal static class OpticSightOnEnablePatch
 {
-	internal static bool Prefix(OpticSight __instance)
+	internal static void Postfix(OpticSight __instance)
 	{
 		try
 		{
-			if (HeldScopeOnlyState.IsNonLocalPlayerOptic((Component)(object)__instance, out string reason))
+			OpticRenderPolicy.ApplyOpticState(
+				__instance,
+				"OpticSight.OnEnable postfix");
+			if (!OpticRenderPolicy.IsCurrentLocalOptic(__instance) && HeldScopeOnlyState.IsStashOptic(__instance))
 			{
-				HeldScopeOnlyState.ShowExternalOpticLens(__instance, reason);
-				return false;
+				HeldScopeOnlyState.RecordStashEnableBlocked(__instance);
 			}
-			if (!HeldScopeOnlyState.IsStashOptic(__instance))
-			{
-				return true;
-			}
-			HeldScopeOnlyState.RecordStashEnableBlocked(__instance);
-			return false;
 		}
 		catch (Exception ex)
 		{
-			HeldScopeOnlyLog.WriteLine("OpticSight.OnEnable filter exception; allowing vanilla: " + ex);
-			return true;
+			HeldScopeOnlyLog.WriteLine(
+				"OpticSight.OnEnable postfix exception; suppressing lens: " + ex);
+			OpticRenderPolicy.SuppressOptic(
+				__instance,
+				"OpticSight.OnEnable postfix exception");
 		}
 	}
 }

@@ -9,13 +9,13 @@ internal static class ScopeMaskRendererDrawActiveCollimatorPatch
 	{
 		try
 		{
-			if (!HeldScopeOnlyState.TryGetLocalCurrentSights(out var _, out var collimatorSight, out var reason))
+			if (!OpticRenderPolicy.TryGetAllowedLocalCollimator(out var collimatorSight))
 			{
-				HeldScopeOnlyState.RecordDrawActiveCollimatorBlock(reason);
+				HeldScopeOnlyState.RecordDrawActiveCollimatorBlock("local held collimator is not aiming or not active");
 				return false;
 			}
 			CollimatorSight val = ScopeMaskRendererPatchState.ActiveCollimatorSight(__instance);
-			if ((Object)(object)collimatorSight != (Object)null && object.ReferenceEquals(val, collimatorSight))
+			if (object.ReferenceEquals(val, collimatorSight))
 			{
 				return true;
 			}

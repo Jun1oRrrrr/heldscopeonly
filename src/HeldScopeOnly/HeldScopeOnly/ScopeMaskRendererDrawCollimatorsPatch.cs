@@ -19,24 +19,14 @@ internal static class ScopeMaskRendererDrawCollimatorsPatch
 		//IL_012a: Unknown result type (might be due to invalid IL or missing references)
 		try
 		{
-			if (!HeldScopeOnlyState.TryGetLocalCurrentSights(out var _, out var collimatorSight, out var reason))
+			if (!OpticRenderPolicy.TryGetAllowedLocalCollimator(out var collimatorSight))
 			{
-				HeldScopeOnlyState.RecordDrawCollimatorBlock(reason);
-				return false;
-			}
-			if ((Object)(object)collimatorSight == (Object)null)
-			{
-				HeldScopeOnlyState.RecordDrawCollimatorBlock("local current scope mode has no collimator");
+				HeldScopeOnlyState.RecordDrawCollimatorBlock("local held collimator is not aiming or not active");
 				return false;
 			}
 			if (buffer == null || (Object)(object)currentCamera == (Object)null)
 			{
 				HeldScopeOnlyState.RecordDrawCollimatorBlock("draw buffer or camera is unavailable");
-				return false;
-			}
-			if (!((Behaviour)collimatorSight).isActiveAndEnabled || (Object)(object)collimatorSight.CollimatorMeshRenderer == (Object)null)
-			{
-				HeldScopeOnlyState.RecordDrawCollimatorBlock("local current collimator is not active");
 				return false;
 			}
 			Material val = ScopeMaskRendererPatchState.CollimatorMaterial(__instance);

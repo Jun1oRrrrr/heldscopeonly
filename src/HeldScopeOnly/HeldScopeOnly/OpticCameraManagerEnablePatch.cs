@@ -13,8 +13,8 @@ internal static class OpticCameraManagerEnablePatch
 		}
 		catch (Exception ex)
 		{
-			HeldScopeOnlyLog.WriteLine("filter exception; allowing vanilla behavior: " + ex);
-			return true;
+			HeldScopeOnlyLog.WriteLine("filter exception; blocking optic: " + ex);
+			return false;
 		}
 	}
 }

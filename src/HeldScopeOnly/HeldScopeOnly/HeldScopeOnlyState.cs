@@ -138,6 +138,9 @@ internal static class HeldScopeOnlyState
 			string text = "cached local player: " + DescribePlayer(player);
 			HeldScopeOnlyPlugin.Log.LogInfo((object)text);
 			HeldScopeOnlyLog.WriteLine(text);
+			OpticRenderPolicy.ScanHierarchy(
+				((Component)player).transform,
+				"local player registration");
 		}
 	}
 
@@ -165,6 +168,21 @@ internal static class HeldScopeOnlyState
 		{
 			HeldScopeOnlyLog.WriteLine("fika-remote-register=" + RemoteRegistered + " root=" + DescribeTransform(root));
 		}
+		OpticRenderPolicy.ScanHierarchy(
+			root,
+			"remote weapon root registration");
+	}
+
+	internal static void ScanLocalPlayerHierarchy(string reason)
+	{
+		Player player = ResolveLocalPlayer();
+		if ((Object)(object)player == (Object)null)
+		{
+			return;
+		}
+		OpticRenderPolicy.ScanHierarchy(
+			((Component)player).transform,
+			reason);
 	}
 
 	internal static void RegisterRemoteObservedPlayerView(ObservedPlayerView view, string reason)
@@ -180,6 +198,9 @@ internal static class HeldScopeOnlyState
 			{
 				RegisterRemoteWeaponRoot(view.WeaponRoot.Original);
 			}
+			OpticRenderPolicy.ScanHierarchy(
+				((Component)view).transform,
+				"remote ObservedPlayerView registration: " + reason);
 		}
 		catch (Exception ex)
 		{
@@ -252,8 +273,8 @@ internal static class HeldScopeOnlyState
 		Player owner = component.GetComponentInParent<Player>();
 		if ((Object)(object)owner == (Object)null)
 		{
-			reason = "optic has no Player owner";
-			return false;
+			reason = "optic has no local Player owner and is treated as non-local";
+			return true;
 		}
 		Player local = ResolveLocalPlayer();
 		if ((Object)(object)local != (Object)null)
@@ -294,13 +315,15 @@ internal static class HeldScopeOnlyState
 		{
 			return;
 		}
-		opticSight.LensFade(false);
+		OpticRenderPolicy.SuppressOptic(
+			opticSight,
+			"external lens suppression: " + reason);
 		if (_remoteLensesShownSeen.Add(instanceID))
 		{
 			RemoteLensesShown++;
 			if (RemoteLensesShown <= 40 || RemoteLensesShown % 20 == 0)
 			{
-				HeldScopeOnlyLog.WriteLine("fika-remote-lens-shown=" + RemoteLensesShown + " reason=\"" + reason + "\" optic=" + DescribeOptic(opticSight));
+				HeldScopeOnlyLog.WriteLine("fika-remote-lens-suppressed=" + RemoteLensesShown + " reason=\"" + reason + "\" optic=" + DescribeOptic(opticSight));
 			}
 		}
 	}
@@ -323,10 +346,15 @@ internal static class HeldScopeOnlyState
 	private static bool EvaluateOptic(OpticSight opticSight, out string reason, out Player owner, out Player local)
 	{
 		owner = null;
-		local = null;
+		local = ResolveLocalPlayer();
 		if ((Object)(object)opticSight == (Object)null)
 		{
-			reason = "null optic event; preserving vanilla behavior";
+			reason = "null optic event; fail closed";
+			return false;
+		}
+		if (OpticRenderPolicy.IsCurrentLocalHeldOptic(opticSight))
+		{
+			reason = "optic is the local player's current held scope";
 			return true;
 		}
 		if (IsRemoteScopeComponent((Component)(object)opticSight))
@@ -339,35 +367,13 @@ internal static class HeldScopeOnlyState
 			reason = "optic belongs to a hideout display weapon";
 			return false;
 		}
-		local = ResolveLocalPlayer();
-		if ((Object)(object)local == (Object)null)
-		{
-			reason = "local player is not known yet; fail open";
-			return true;
-		}
 		owner = ((Component)opticSight).GetComponentInParent<Player>();
-		bool flag = (Object)(object)owner != (Object)null && object.ReferenceEquals(owner, local);
-		if ((Object)(object)owner != (Object)null && !flag)
+		if ((Object)(object)owner != (Object)null)
 		{
 			reason = "optic belongs to a different player";
 			return false;
 		}
-		if (!TryGetCurrentOptic(local, out var opticSight2))
-		{
-			reason = "could not read local current scope; fail open";
-			return true;
-		}
-		if (object.ReferenceEquals(opticSight2, opticSight))
-		{
-			reason = "optic is the local player's current scope mode";
-			return true;
-		}
-		if (flag && (Object)(object)opticSight2 == (Object)null)
-		{
-			reason = "local scope state is not ready; fail open for local owner";
-			return true;
-		}
-		reason = (((Object)(object)owner == (Object)null) ? "optic has no Player owner and is not the current local optic" : "local owner optic is not the current scope mode");
+		reason = "optic is not the current local scope";
 		return false;
 	}
 
@@ -394,10 +400,15 @@ internal static class HeldScopeOnlyState
 	private static bool EvaluateReticle(OpticSight opticSight, out string reason, out Player owner, out Player local)
 	{
 		owner = null;
-		local = null;
+		local = ResolveLocalPlayer();
 		if ((Object)(object)opticSight == (Object)null)
 		{
-			reason = "null reticle optic; fail open";
+			reason = "null reticle optic; fail closed";
+			return false;
+		}
+		if (OpticRenderPolicy.IsCurrentLocalOptic(opticSight))
+		{
+			reason = "optic is the local player's current scope";
 			return true;
 		}
 		if (IsRemoteScopeComponent((Component)(object)opticSight))
@@ -405,42 +416,18 @@ internal static class HeldScopeOnlyState
 			reason = "reticle optic belongs to a remote observed player";
 			return false;
 		}
-		local = ResolveLocalPlayer();
-		if ((Object)(object)local == (Object)null)
-		{
-			reason = "local player is not known yet; fail open";
-			return true;
-		}
-		OpticSight opticSight2;
-		CollimatorSight collimatorSight;
-		bool flag = TryGetLocalCurrentSights(out opticSight2, out collimatorSight, out reason);
-		if (flag && (Object)(object)opticSight2 != (Object)null && object.ReferenceEquals(opticSight2, opticSight))
-		{
-			reason = "optic is the local player's current scope";
-			return true;
-		}
 		if (IsStashOptic(opticSight))
 		{
 			reason = "optic belongs to a hideout display weapon";
 			return false;
 		}
 		owner = ((Component)opticSight).GetComponentInParent<Player>();
-		if ((Object)(object)owner != (Object)null && !object.ReferenceEquals(owner, local))
+		if ((Object)(object)owner != (Object)null)
 		{
 			reason = "optic belongs to a different player";
 			return false;
 		}
-		if (!flag)
-		{
-			reason = "could not read local current scope; fail open: " + reason;
-			return true;
-		}
-		if ((Object)(object)opticSight2 == (Object)null)
-		{
-			reason = "local held weapon has no active optic; fail open";
-			return true;
-		}
-		reason = (((Object)(object)owner == (Object)null) ? "optic has no Player owner and is not the local current optic" : "local owner optic is not the local current optic");
+		reason = "optic is not the current local optic";
 		return false;
 	}
 
@@ -544,11 +531,11 @@ internal static class HeldScopeOnlyState
 				return true;
 			}
 			int num = Convert.ToInt32(_aimIndexProperty.GetValue(proceduralWeaponAnimation, null));
-			if (num < 0)
+			if (num < 0 || num >= list.Count)
 			{
 				return true;
 			}
-			object obj = list[num % list.Count];
+			object obj = list[num];
 			if (obj == null)
 			{
 				return true;
@@ -632,12 +619,12 @@ internal static class HeldScopeOnlyState
 				return true;
 			}
 			int num = Convert.ToInt32(_aimIndexProperty.GetValue(proceduralWeaponAnimation, null));
-			if (num < 0)
+			if (num < 0 || num >= list.Count)
 			{
 				reason = "local held weapon has no active aim index";
 				return true;
 			}
-			object obj = list[num % list.Count];
+			object obj = list[num];
 			if (obj == null)
 			{
 				reason = "local held weapon has no active scope";
@@ -659,7 +646,7 @@ internal static class HeldScopeOnlyState
 		}
 	}
 
-	private static void InvalidateCurrentSightsCache()
+	internal static void InvalidateCurrentSightsCache()
 	{
 		_currentSightsCacheValid = false;
 		_currentSightsCacheFrame = -1;
