@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>HeldScopeOnly.1.9.1</AssemblyName>
+    <AssemblyName>HeldScopeOnly.1.9.2</AssemblyName>
     <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <TargetFramework>net40</TargetFramework>
   </PropertyGroup>

@@ -1,6 +1,5 @@
 using System;
 using EFT.CameraControl;
-using UnityEngine;
 
 namespace HeldScopeOnly;
 
@@ -10,17 +9,17 @@ internal static class ScopeMaskRendererDrawOpticPatch
 	{
 		try
 		{
-			if (!OpticRenderPolicy.TryGetAllowedLocalOptic(out var localOptic))
+			if (!OpticRenderPolicy.TryGetAllowedLocalOptic(out var opticSight))
 			{
 				HeldScopeOnlyState.RecordDrawOpticBlock("local held optic is not aiming or not active");
 				return false;
 			}
 			OpticSight currentOpticSight = __instance.CurrentOpticSight;
-			if (object.ReferenceEquals(currentOpticSight, localOptic))
+			if ((object)currentOpticSight == opticSight)
 			{
 				return true;
 			}
-			HeldScopeOnlyState.RecordDrawOpticBlock(((Object)(object)currentOpticSight == (Object)null) ? "no current optic to draw" : "current optic is not the local held scope");
+			HeldScopeOnlyState.RecordDrawOpticBlock((currentOpticSight == null) ? "no current optic to draw" : "current optic is not the local held scope");
 			return false;
 		}
 		catch (Exception ex)

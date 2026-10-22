@@ -1,6 +1,5 @@
 using System;
 using EFT;
-using UnityEngine;
 
 namespace HeldScopeOnly;
 
@@ -11,12 +10,10 @@ internal static class FirearmsUpdateModsVisualControllersPatch
 		try
 		{
 			Player player = __instance.Player;
-			if (!((Object)(object)player == (Object)null) && !player.IsYourPlayer)
+			if (!(player == null) && !player.IsYourPlayer)
 			{
 				HeldScopeOnlyState.RegisterRemoteWeaponRoot(__instance._weaponHierarchy);
-				OpticRenderPolicy.ScanHierarchy(
-					__instance._weaponHierarchy,
-					"remote Firearms.UpdateModsVisualControllers prefix");
+				OpticRenderPolicy.ScanHierarchy(__instance._weaponHierarchy, "remote Firearms.UpdateModsVisualControllers prefix");
 			}
 		}
 		catch (Exception ex)
@@ -30,12 +27,10 @@ internal static class FirearmsUpdateModsVisualControllersPatch
 		try
 		{
 			Player player = __instance.Player;
-			if (!((Object)(object)player == (Object)null) && !player.IsYourPlayer)
+			if (!(player == null) && !player.IsYourPlayer)
 			{
 				HeldScopeOnlyState.RegisterRemoteWeaponRoot(__instance._weaponHierarchy);
-				OpticRenderPolicy.ScanHierarchy(
-					__instance._weaponHierarchy,
-					"remote Firearms.UpdateModsVisualControllers postfix");
+				OpticRenderPolicy.ScanHierarchy(__instance._weaponHierarchy, "remote Firearms.UpdateModsVisualControllers postfix");
 			}
 		}
 		catch (Exception ex)

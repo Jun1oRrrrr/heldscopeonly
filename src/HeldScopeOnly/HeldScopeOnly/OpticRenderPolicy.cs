@@ -1,16 +1,13 @@
 using System;
 using System.Collections.Generic;
 using EFT.CameraControl;
+using EFT.Interactive;
 using UnityEngine;
 
 namespace HeldScopeOnly;
 
 internal static class OpticRenderPolicy
 {
-	private const string CameraTextureProperty = "_CamTex";
-
-	private const string SwitchToSightProperty = "_SwitchToSight";
-
 	private sealed class LensSnapshot
 	{
 		internal Renderer Renderer;
@@ -24,9 +21,40 @@ internal static class OpticRenderPolicy
 		internal int LastAllowed = -1;
 	}
 
+	private sealed class PendingStashOptic
+	{
+		internal OpticSight Optic;
+
+		internal int InstanceId;
+
+		internal string Reason;
+
+		internal int FirstFrame;
+
+		internal int NextFrame;
+
+		internal int Attempts;
+	}
+
+	private const string CameraTextureProperty = "_CamTex";
+
+	private const string SwitchToSightProperty = "_SwitchToSight";
+
 	private static readonly Dictionary<Renderer, LensSnapshot> LensByRenderer = new Dictionary<Renderer, LensSnapshot>();
 
 	private static readonly List<LensSnapshot> Snapshots = new List<LensSnapshot>();
+
+	private static readonly List<PendingStashOptic> PendingStashOptics = new List<PendingStashOptic>();
+
+	private static readonly HashSet<int> PendingStashOpticIds = new HashSet<int>();
+
+	private const int StashRetryBatchLimit = 4;
+
+	private const int StashRetryIntervalFrames = 2;
+
+	private const int StashRetryAttemptLimit = 90;
+
+	private const int StashRetryAgeLimitFrames = 240;
 
 	private static Texture2D _opaqueNeutralTexture;
 
@@ -66,17 +94,17 @@ internal static class OpticRenderPolicy
 
 	internal static void ScanHierarchy(Transform root, string reason)
 	{
-		if ((Object)(object)root == (Object)null)
+		if (root == null)
 		{
 			return;
 		}
 		HierarchyScans++;
 		try
 		{
-			OpticSight[] optics = ((Component)root).GetComponentsInChildren<OpticSight>(true);
-			for (int i = 0; i < optics.Length; i++)
+			OpticSight[] componentsInChildren = root.GetComponentsInChildren<OpticSight>(includeInactive: true);
+			for (int i = 0; i < componentsInChildren.Length; i++)
 			{
-				TrackOptic(optics[i]);
+				ApplyOpticState(componentsInChildren[i], reason);
 			}
 		}
 		catch (Exception ex)
@@ -89,13 +117,103 @@ internal static class OpticRenderPolicy
 		}
 	}
 
-	internal static void ScanLootItem(EFT.Interactive.LootItem item, string reason)
+	internal static void ScanLootItem(LootItem item, string reason)
 	{
-		if ((Object)(object)item == (Object)null)
+		if (!(item == null))
+		{
+			ScanHierarchy(item.transform, reason);
+		}
+	}
+
+	internal static void RequestStashOptic(OpticSight opticSight, string reason)
+	{
+		if (opticSight == null)
 		{
 			return;
 		}
-		ScanHierarchy(((Component)item).transform, reason);
+		if (TrackOptic(opticSight, allowed: false, force: true))
+		{
+			HeldScopeOnlyState.RecordStashOpticEnforced(opticSight, reason);
+			return;
+		}
+		int instanceID = opticSight.GetInstanceID();
+		if (!PendingStashOpticIds.Add(instanceID))
+		{
+			for (int i = 0; i < PendingStashOptics.Count; i++)
+			{
+				if ((object)PendingStashOptics[i].Optic == opticSight)
+				{
+					PendingStashOptics[i].Reason = reason;
+					break;
+				}
+			}
+		}
+		else
+		{
+			int frameCount = Time.frameCount;
+			PendingStashOptics.Add(new PendingStashOptic
+			{
+				Optic = opticSight,
+				InstanceId = instanceID,
+				Reason = reason,
+				FirstFrame = frameCount,
+				NextFrame = frameCount + 1
+			});
+			HeldScopeOnlyState.RegisterStashOptic(opticSight, reason);
+		}
+	}
+
+	internal static void ProcessPendingStashOptics()
+	{
+		if (PendingStashOptics.Count == 0)
+		{
+			return;
+		}
+		int num = Math.Min(4, PendingStashOptics.Count);
+		int frameCount = Time.frameCount;
+		while (num-- > 0 && PendingStashOptics.Count > 0)
+		{
+			PendingStashOptic pendingStashOptic = PendingStashOptics[0];
+			PendingStashOptics.RemoveAt(0);
+			if (pendingStashOptic == null)
+			{
+				continue;
+			}
+			if (pendingStashOptic.Optic == null)
+			{
+				PendingStashOpticIds.Remove(pendingStashOptic.InstanceId);
+				continue;
+			}
+			if (!HeldScopeOnlyState.IsStashOptic(pendingStashOptic.Optic))
+			{
+				PendingStashOpticIds.Remove(pendingStashOptic.InstanceId);
+				ApplyOpticState(pendingStashOptic.Optic, "stash optic left hideout hierarchy");
+				continue;
+			}
+			if (frameCount < pendingStashOptic.NextFrame)
+			{
+				PendingStashOptics.Add(pendingStashOptic);
+				continue;
+			}
+			pendingStashOptic.Attempts++;
+			int num2 = frameCount - pendingStashOptic.FirstFrame;
+			HeldScopeOnlyState.RecordStashOpticRetry(pendingStashOptic.Optic, pendingStashOptic.Attempts, num2, pendingStashOptic.Reason);
+			if (TrackOptic(pendingStashOptic.Optic, allowed: false, force: true))
+			{
+				PendingStashOpticIds.Remove(pendingStashOptic.InstanceId);
+				HeldScopeOnlyState.RecordStashOpticEnforced(pendingStashOptic.Optic, "late stash lens resolution");
+			}
+			else if (pendingStashOptic.Attempts >= 90 || num2 >= 240)
+			{
+				PendingStashOpticIds.Remove(pendingStashOptic.InstanceId);
+				HeldScopeOnlyState.RecordStashOpticUnresolved(pendingStashOptic.Optic, pendingStashOptic.Attempts, num2, pendingStashOptic.Reason);
+			}
+			else
+			{
+				pendingStashOptic.NextFrame = frameCount + 2;
+				PendingStashOptics.Add(pendingStashOptic);
+			}
+		}
 	}
 
 	internal static void EnforceBeforeCameraRender(Camera camera, string reason)
@@ -105,27 +223,24 @@ internal static class OpticRenderPolicy
 		{
 			return;
 		}
-
-		LensSnapshot desiredSnapshot = null;
-		if (TryGetAllowedLocalOptic(out var allowedOptic))
+		LensSnapshot snapshot = null;
+		if (TryGetAllowedLocalOptic(out var opticSight))
 		{
-			TryGetSnapshot(allowedOptic, out desiredSnapshot);
+			TryGetSnapshot(opticSight, out snapshot);
 		}
-
-		if (!object.ReferenceEquals(desiredSnapshot, _lastAllowedSnapshot))
+		if (snapshot != _lastAllowedSnapshot)
 		{
-			LensSnapshot previousSnapshot = _lastAllowedSnapshot;
-			_lastAllowedSnapshot = desiredSnapshot;
-			if (previousSnapshot != null)
+			LensSnapshot lastAllowedSnapshot = _lastAllowedSnapshot;
+			_lastAllowedSnapshot = snapshot;
+			if (lastAllowedSnapshot != null)
 			{
-				ApplySnapshot(previousSnapshot, allowed: false);
+				ApplySnapshot(lastAllowedSnapshot, allowed: false);
 			}
-			if (desiredSnapshot != null)
+			if (snapshot != null)
 			{
-				ApplySnapshot(desiredSnapshot, allowed: true);
+				ApplySnapshot(snapshot, allowed: true);
 			}
 		}
-
 		PruneDestroyedSnapshots();
 	}
 
@@ -133,27 +248,32 @@ internal static class OpticRenderPolicy
 	{
 		PolicyChecks++;
 		opticSight = null;
-		if (!HeldScopeOnlyState.TryGetLocalCurrentSights(out var currentOptic, out var _, out var _))
+		if (!HeldScopeOnlyState.TryGetLocalCurrentSights(out var opticSight2, out var _, out var _))
 		{
 			PolicyBlocked++;
 			return false;
 		}
-		if ((Object)(object)currentOptic == (Object)null)
+		if (opticSight2 == null)
 		{
 			PolicyBlocked++;
 			return false;
 		}
-		if (!HeldScopeOnlyState.TryGetLocalOpticAiming(out var aiming, out var opticMode) || !aiming || !opticMode)
+		if (!HeldScopeOnlyState.TryGetLocalOpticAiming(out var aiming, out var optic) || !aiming || !optic)
 		{
 			PolicyBlocked++;
 			return false;
 		}
-		if (!((Behaviour)currentOptic).isActiveAndEnabled || (Object)(object)currentOptic.LensRenderer == (Object)null)
+		if (!opticSight2.isActiveAndEnabled || opticSight2.LensRenderer == null)
 		{
 			PolicyBlocked++;
 			return false;
 		}
-		opticSight = currentOptic;
+		if (HeldScopeOnlyState.IsStashOptic(opticSight2))
+		{
+			PolicyBlocked++;
+			return false;
+		}
+		opticSight = opticSight2;
 		PolicyAllowed++;
 		return true;
 	}
@@ -161,11 +281,11 @@ internal static class OpticRenderPolicy
 	internal static bool TryGetAllowedLocalCollimator(out CollimatorSight collimatorSight)
 	{
 		collimatorSight = null;
-		if (!HeldScopeOnlyState.TryGetLocalCurrentSights(out var _, out var currentCollimator, out var _))
+		if (!HeldScopeOnlyState.TryGetLocalCurrentSights(out var _, out var collimatorSight2, out var _))
 		{
 			return false;
 		}
-		if ((Object)(object)currentCollimator == (Object)null)
+		if (collimatorSight2 == null)
 		{
 			return false;
 		}
@@ -173,33 +293,38 @@ internal static class OpticRenderPolicy
 		{
 			return false;
 		}
-		if (!((Behaviour)currentCollimator).isActiveAndEnabled || (Object)(object)currentCollimator.CollimatorMeshRenderer == (Object)null)
+		if (!collimatorSight2.isActiveAndEnabled || collimatorSight2.CollimatorMeshRenderer == null)
 		{
 			return false;
 		}
-		collimatorSight = currentCollimator;
+		collimatorSight = collimatorSight2;
 		return true;
 	}
 
 	internal static bool IsCurrentLocalOptic(OpticSight opticSight)
 	{
 		PolicyChecks++;
-		if ((Object)(object)opticSight == (Object)null)
+		if (opticSight == null)
 		{
 			PolicyBlocked++;
 			return false;
 		}
-		if (!HeldScopeOnlyState.TryGetLocalCurrentSights(out var currentOptic, out var _, out var _) || !object.ReferenceEquals(currentOptic, opticSight))
+		if (!HeldScopeOnlyState.TryGetLocalCurrentSights(out var opticSight2, out var _, out var _) || (object)opticSight2 != opticSight)
 		{
 			PolicyBlocked++;
 			return false;
 		}
-		if (!HeldScopeOnlyState.TryGetLocalOpticAiming(out var aiming, out var opticMode) || !aiming || !opticMode)
+		if (!HeldScopeOnlyState.TryGetLocalOpticAiming(out var aiming, out var optic) || !aiming || !optic)
 		{
 			PolicyBlocked++;
 			return false;
 		}
-		if (!((Behaviour)opticSight).isActiveAndEnabled || (Object)(object)opticSight.LensRenderer == (Object)null)
+		if (!opticSight.isActiveAndEnabled || opticSight.LensRenderer == null)
+		{
+			PolicyBlocked++;
+			return false;
+		}
+		if (HeldScopeOnlyState.IsStashOptic(opticSight))
 		{
 			PolicyBlocked++;
 			return false;
@@ -210,15 +335,19 @@ internal static class OpticRenderPolicy
 
 	internal static bool IsCurrentLocalHeldOptic(OpticSight opticSight)
 	{
-		if ((Object)(object)opticSight == (Object)null)
+		if (opticSight == null)
 		{
 			return false;
 		}
-		if (!HeldScopeOnlyState.TryGetLocalCurrentSights(out var currentOptic, out var _, out var _) || !object.ReferenceEquals(currentOptic, opticSight))
+		if (!HeldScopeOnlyState.TryGetLocalCurrentSights(out var opticSight2, out var _, out var _) || (object)opticSight2 != opticSight)
 		{
 			return false;
 		}
-		if ((Object)(object)opticSight.LensRenderer == (Object)null)
+		if (opticSight.LensRenderer == null)
+		{
+			return false;
+		}
+		if (HeldScopeOnlyState.IsStashOptic(opticSight))
 		{
 			return false;
 		}
@@ -227,34 +356,46 @@ internal static class OpticRenderPolicy
 
 	internal static void ApplyOpticState(OpticSight opticSight, string reason)
 	{
-		TrackOptic(opticSight);
-		if ((Object)(object)opticSight == (Object)null)
+		if (!(opticSight == null))
 		{
-			return;
+			if (HeldScopeOnlyState.IsStashOptic(opticSight))
+			{
+				RequestStashOptic(opticSight, reason);
+			}
+			else
+			{
+				TrackOptic(opticSight, IsCurrentLocalOptic(opticSight), force: false);
+			}
 		}
-		bool allowed = IsCurrentLocalOptic(opticSight);
-		if (!TryGetSnapshot(opticSight, out var snapshot))
-		{
-			return;
-		}
-		ApplySnapshot(snapshot, allowed);
 	}
 
-	internal static void SuppressOptic(OpticSight opticSight, string reason)
+	internal static void SuppressOptic(OpticSight opticSight, string reason, bool force = false)
 	{
-		TrackOptic(opticSight);
-		if (TryGetSnapshot(opticSight, out var snapshot))
+		if (!(opticSight == null))
 		{
-			ApplySnapshot(snapshot, allowed: false);
+			if (force || HeldScopeOnlyState.IsStashOptic(opticSight))
+			{
+				RequestStashOptic(opticSight, reason);
+			}
+			else
+			{
+				TrackOptic(opticSight, allowed: false, force: false);
+			}
 		}
 	}
 
 	internal static void RestoreOptic(OpticSight opticSight, string reason)
 	{
-		TrackOptic(opticSight);
-		if (TryGetSnapshot(opticSight, out var snapshot))
+		if (!(opticSight == null))
 		{
-			ApplySnapshot(snapshot, IsCurrentLocalOptic(opticSight));
+			if (HeldScopeOnlyState.IsStashOptic(opticSight))
+			{
+				RequestStashOptic(opticSight, reason);
+			}
+			else
+			{
+				TrackOptic(opticSight, IsCurrentLocalOptic(opticSight), force: false);
+			}
 		}
 	}
 
@@ -272,11 +413,7 @@ internal static class OpticRenderPolicy
 
 	internal static void HideCurrentLocalOptic(string reason)
 	{
-		if (!HeldScopeOnlyState.TryGetLocalCurrentSights(out var opticSight, out var _, out var _))
-		{
-			return;
-		}
-		if ((Object)(object)opticSight != (Object)null && TryGetSnapshot(opticSight, out var snapshot))
+		if (HeldScopeOnlyState.TryGetLocalCurrentSights(out var opticSight, out var _, out var _) && opticSight != null && TryGetSnapshot(opticSight, out var snapshot))
 		{
 			ApplySnapshot(snapshot, allowed: false);
 		}
@@ -284,115 +421,117 @@ internal static class OpticRenderPolicy
 
 	internal static void ReleaseResources()
 	{
-		for (int i = Snapshots.Count - 1; i >= 0; i--)
+		for (int num = Snapshots.Count - 1; num >= 0; num--)
 		{
-			LensSnapshot snapshot = Snapshots[i];
-			if (snapshot != null)
+			LensSnapshot lensSnapshot = Snapshots[num];
+			if (lensSnapshot != null)
 			{
-				RestoreSourceMaterials(snapshot);
-				DestroySnapshotMaterials(snapshot);
+				RestoreSourceMaterials(lensSnapshot);
+				DestroySnapshotMaterials(lensSnapshot);
 			}
 		}
 		Snapshots.Clear();
 		LensByRenderer.Clear();
+		PendingStashOptics.Clear();
+		PendingStashOpticIds.Clear();
 		_lastAllowedSnapshot = null;
 		_pruneCursor = 0;
 		_lastPruneFrame = -1;
-		if ((Object)(object)_opaqueNeutralTexture != (Object)null)
+		if (_opaqueNeutralTexture != null)
 		{
 			DestroyObject(_opaqueNeutralTexture);
 			_opaqueNeutralTexture = null;
 		}
 	}
 
-	private static void TrackOptic(OpticSight opticSight)
+	private static bool TrackOptic(OpticSight opticSight, bool allowed, bool force)
 	{
-		if ((Object)(object)opticSight == (Object)null || (Object)(object)opticSight.LensRenderer == (Object)null)
+		if (opticSight == null || opticSight.LensRenderer == null)
 		{
-			return;
+			return false;
 		}
 		OpticsVisited++;
-		Renderer renderer = opticSight.LensRenderer;
-		if (LensByRenderer.TryGetValue(renderer, out var existing))
+		Renderer lensRenderer = opticSight.LensRenderer;
+		if (LensByRenderer.TryGetValue(lensRenderer, out var value))
 		{
-			existing.Optic = opticSight;
-			ApplySnapshot(existing, IsCurrentLocalOptic(opticSight));
-			return;
+			value.Optic = opticSight;
+			ApplySnapshot(value, allowed, force);
+			return true;
 		}
-		Material[] sourceMaterials;
+		Material[] sharedMaterials;
 		try
 		{
-			sourceMaterials = renderer.sharedMaterials;
+			sharedMaterials = lensRenderer.sharedMaterials;
 		}
 		catch (Exception ex)
 		{
 			HeldScopeOnlyLog.WriteLine("could not read optic lens materials: " + ex);
-			return;
+			return false;
 		}
-		if (sourceMaterials == null || sourceMaterials.Length == 0)
+		if (sharedMaterials == null || sharedMaterials.Length == 0)
 		{
-			return;
+			return false;
 		}
-		bool hasInteriorProperty = false;
-		for (int i = 0; i < sourceMaterials.Length; i++)
+		bool flag = false;
+		foreach (Material material in sharedMaterials)
 		{
-			Material material = sourceMaterials[i];
-			if ((Object)(object)material != (Object)null && (material.HasProperty(CameraTextureProperty) || material.HasProperty(SwitchToSightProperty)))
+			if (material != null && (material.HasProperty("_CamTex") || material.HasProperty("_SwitchToSight")))
 			{
-				hasInteriorProperty = true;
+				flag = true;
 				break;
 			}
 		}
-		if (!hasInteriorProperty)
+		if (!flag)
 		{
-			return;
+			return false;
 		}
-		Material[] suppressedMaterials = new Material[sourceMaterials.Length];
-		for (int j = 0; j < sourceMaterials.Length; j++)
+		Material[] array = new Material[sharedMaterials.Length];
+		for (int j = 0; j < sharedMaterials.Length; j++)
 		{
-			Material source = sourceMaterials[j];
-			if ((Object)(object)source != (Object)null && (source.HasProperty(CameraTextureProperty) || source.HasProperty(SwitchToSightProperty)))
+			Material material2 = sharedMaterials[j];
+			if (material2 != null && (material2.HasProperty("_CamTex") || material2.HasProperty("_SwitchToSight")))
 			{
-				Material clone = new Material(source);
-				clone.name = source.name + " [HeldScopeOnly suppressed lens]";
-				suppressedMaterials[j] = clone;
+				Material material3 = new Material(material2);
+				material3.name = material2.name + " [HeldScopeOnly suppressed lens]";
+				array[j] = material3;
 			}
 			else
 			{
-				suppressedMaterials[j] = source;
+				array[j] = material2;
 			}
 		}
-		LensSnapshot snapshot = new LensSnapshot
+		LensSnapshot lensSnapshot = new LensSnapshot
 		{
-			Renderer = renderer,
+			Renderer = lensRenderer,
 			Optic = opticSight,
-			SourceMaterials = sourceMaterials,
-			SuppressedMaterials = suppressedMaterials
+			SourceMaterials = sharedMaterials,
+			SuppressedMaterials = array
 		};
-		LensByRenderer[renderer] = snapshot;
-		Snapshots.Add(snapshot);
+		LensByRenderer[lensRenderer] = lensSnapshot;
+		Snapshots.Add(lensSnapshot);
 		CamTexRenderersTracked++;
-		ApplySnapshot(snapshot, IsCurrentLocalOptic(opticSight));
+		ApplySnapshot(lensSnapshot, allowed, force);
+		return true;
 	}
 
 	private static bool TryGetSnapshot(OpticSight opticSight, out LensSnapshot snapshot)
 	{
 		snapshot = null;
-		if ((Object)(object)opticSight == (Object)null || (Object)(object)opticSight.LensRenderer == (Object)null)
+		if (opticSight == null || opticSight.LensRenderer == null)
 		{
 			return false;
 		}
 		return LensByRenderer.TryGetValue(opticSight.LensRenderer, out snapshot);
 	}
 
-	private static void ApplySnapshot(LensSnapshot snapshot, bool allowed)
+	private static void ApplySnapshot(LensSnapshot snapshot, bool allowed, bool force = false)
 	{
-		if (snapshot == null || (Object)(object)snapshot.Renderer == (Object)null)
+		if (snapshot == null || snapshot.Renderer == null)
 		{
 			return;
 		}
-		int desired = (allowed ? 1 : 0);
-		if (snapshot.LastAllowed == desired)
+		int num = (allowed ? 1 : 0);
+		if (!force && snapshot.LastAllowed == num)
 		{
 			return;
 		}
@@ -411,7 +550,7 @@ internal static class OpticRenderPolicy
 				LensesSuppressed++;
 				CamTexRenderersSuppressed++;
 			}
-			snapshot.LastAllowed = desired;
+			snapshot.LastAllowed = num;
 			FrameEnforcedOptics++;
 		}
 		catch (Exception ex)
@@ -427,60 +566,57 @@ internal static class OpticRenderPolicy
 		{
 			return;
 		}
-		Texture2D texture = GetOpaqueNeutralTexture();
-		for (int i = 0; i < materials.Length; i++)
+		Texture2D opaqueNeutralTexture = GetOpaqueNeutralTexture();
+		foreach (Material material in materials)
 		{
-			Material material = materials[i];
-			if ((Object)(object)material == (Object)null)
+			if (!(material == null))
 			{
-				continue;
-			}
-			if (material.HasProperty(CameraTextureProperty))
-			{
-				material.SetTexture(CameraTextureProperty, (Texture)(object)texture);
-				InteriorTexturePropertiesBlocked++;
-			}
-			if (material.HasProperty(SwitchToSightProperty))
-			{
-				material.SetFloat(SwitchToSightProperty, 0.97f);
+				if (material.HasProperty("_CamTex"))
+				{
+					material.SetTexture("_CamTex", opaqueNeutralTexture);
+					InteriorTexturePropertiesBlocked++;
+				}
+				if (material.HasProperty("_SwitchToSight"))
+				{
+					material.SetFloat("_SwitchToSight", 0.97f);
+				}
 			}
 		}
 	}
 
 	private static Texture2D GetOpaqueNeutralTexture()
 	{
-		if ((Object)(object)_opaqueNeutralTexture != (Object)null)
+		if (_opaqueNeutralTexture != null)
 		{
 			return _opaqueNeutralTexture;
 		}
-		_opaqueNeutralTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+		_opaqueNeutralTexture = new Texture2D(1, 1, TextureFormat.RGBA32, mipChain: false);
 		_opaqueNeutralTexture.name = "HeldScopeOnly opaque neutral lens";
 		_opaqueNeutralTexture.filterMode = FilterMode.Bilinear;
 		_opaqueNeutralTexture.wrapMode = TextureWrapMode.Clamp;
 		_opaqueNeutralTexture.hideFlags = HideFlags.HideAndDontSave;
 		_opaqueNeutralTexture.SetPixel(0, 0, new Color(0.06f, 0.065f, 0.06f, 1f));
-		_opaqueNeutralTexture.Apply(false, false);
+		_opaqueNeutralTexture.Apply(updateMipmaps: false, makeNoLongerReadable: false);
 		return _opaqueNeutralTexture;
 	}
 
 	private static void RemoveSnapshotAt(int index)
 	{
-		LensSnapshot snapshot = Snapshots[index];
+		LensSnapshot lensSnapshot = Snapshots[index];
 		Snapshots.RemoveAt(index);
-		if (snapshot == null)
+		if (lensSnapshot != null)
 		{
-			return;
+			if (lensSnapshot == _lastAllowedSnapshot)
+			{
+				_lastAllowedSnapshot = null;
+			}
+			if (lensSnapshot.Renderer != null)
+			{
+				LensByRenderer.Remove(lensSnapshot.Renderer);
+				RestoreSourceMaterials(lensSnapshot);
+			}
+			DestroySnapshotMaterials(lensSnapshot);
 		}
-		if (object.ReferenceEquals(snapshot, _lastAllowedSnapshot))
-		{
-			_lastAllowedSnapshot = null;
-		}
-		if ((Object)(object)snapshot.Renderer != (Object)null)
-		{
-			LensByRenderer.Remove(snapshot.Renderer);
-			RestoreSourceMaterials(snapshot);
-		}
-		DestroySnapshotMaterials(snapshot);
 	}
 
 	private static void PruneDestroyedSnapshots()
@@ -491,22 +627,22 @@ internal static class OpticRenderPolicy
 			return;
 		}
 		_lastPruneFrame = frameCount;
-		int checksRemaining = Math.Min(4, Snapshots.Count);
-		while (checksRemaining-- > 0)
+		int num = Math.Min(4, Snapshots.Count);
+		while (num-- > 0)
 		{
 			if (_pruneCursor >= Snapshots.Count)
 			{
 				_pruneCursor = 0;
 			}
-			LensSnapshot snapshot = Snapshots[_pruneCursor];
-			if (snapshot == null || (Object)(object)snapshot.Renderer == (Object)null)
+			LensSnapshot lensSnapshot = Snapshots[_pruneCursor];
+			if (lensSnapshot == null || lensSnapshot.Renderer == null)
 			{
 				RemoveSnapshotAt(_pruneCursor);
 				if (_pruneCursor >= Snapshots.Count)
 				{
 					_pruneCursor = 0;
 				}
-				return;
+				break;
 			}
 			_pruneCursor++;
 			if (_pruneCursor >= Snapshots.Count)
@@ -518,7 +654,7 @@ internal static class OpticRenderPolicy
 
 	private static void RestoreSourceMaterials(LensSnapshot snapshot)
 	{
-		if (snapshot == null || (Object)(object)snapshot.Renderer == (Object)null || snapshot.SourceMaterials == null)
+		if (snapshot == null || snapshot.Renderer == null || snapshot.SourceMaterials == null)
 		{
 			return;
 		}
@@ -541,28 +677,27 @@ internal static class OpticRenderPolicy
 		}
 		for (int i = 0; i < snapshot.SuppressedMaterials.Length; i++)
 		{
-			Material suppressed = snapshot.SuppressedMaterials[i];
-			Material source = (i < snapshot.SourceMaterials.Length) ? snapshot.SourceMaterials[i] : null;
-			if ((Object)(object)suppressed != (Object)null && !object.ReferenceEquals(suppressed, source))
+			Material material = snapshot.SuppressedMaterials[i];
+			Material material2 = ((i < snapshot.SourceMaterials.Length) ? snapshot.SourceMaterials[i] : null);
+			if (material != null && (object)material != material2)
 			{
-				DestroyObject(suppressed);
+				DestroyObject(material);
 			}
 		}
 	}
 
-	private static void DestroyObject(Object value)
+	private static void DestroyObject(UnityEngine.Object value)
 	{
-		if ((Object)(object)value == (Object)null)
+		if (!(value == null))
 		{
-			return;
-		}
-		if (Application.isPlaying)
-		{
-			Object.Destroy(value);
-		}
-		else
-		{
-			Object.DestroyImmediate(value);
+			if (Application.isPlaying)
+			{
+				UnityEngine.Object.Destroy(value);
+			}
+			else
+			{
+				UnityEngine.Object.DestroyImmediate(value);
+			}
 		}
 	}
 }

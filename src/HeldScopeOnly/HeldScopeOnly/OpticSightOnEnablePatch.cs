@@ -1,6 +1,5 @@
 using System;
 using EFT.CameraControl;
-using UnityEngine;
 
 namespace HeldScopeOnly;
 
@@ -10,9 +9,7 @@ internal static class OpticSightOnEnablePatch
 	{
 		try
 		{
-			OpticRenderPolicy.ApplyOpticState(
-				__instance,
-				"OpticSight.OnEnable postfix");
+			OpticRenderPolicy.ApplyOpticState(__instance, "OpticSight.OnEnable postfix");
 			if (!OpticRenderPolicy.IsCurrentLocalOptic(__instance) && HeldScopeOnlyState.IsStashOptic(__instance))
 			{
 				HeldScopeOnlyState.RecordStashEnableBlocked(__instance);
@@ -20,11 +17,8 @@ internal static class OpticSightOnEnablePatch
 		}
 		catch (Exception ex)
 		{
-			HeldScopeOnlyLog.WriteLine(
-				"OpticSight.OnEnable postfix exception; suppressing lens: " + ex);
-			OpticRenderPolicy.SuppressOptic(
-				__instance,
-				"OpticSight.OnEnable postfix exception");
+			HeldScopeOnlyLog.WriteLine("OpticSight.OnEnable postfix exception; suppressing lens: " + ex);
+			OpticRenderPolicy.SuppressOptic(__instance, "OpticSight.OnEnable postfix exception");
 		}
 	}
 }

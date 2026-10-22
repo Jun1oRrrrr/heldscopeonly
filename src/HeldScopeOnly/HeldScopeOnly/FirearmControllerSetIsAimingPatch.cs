@@ -1,10 +1,11 @@
 using System;
+using EFT;
 
 namespace HeldScopeOnly;
 
 internal static class FirearmControllerSetIsAimingPatch
 {
-	internal static void Postfix(EFT.Player.FirearmController __instance, bool value)
+	internal static void Postfix(Player.FirearmController __instance, bool value)
 	{
 		try
 		{

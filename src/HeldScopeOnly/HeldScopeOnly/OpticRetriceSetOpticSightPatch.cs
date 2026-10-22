@@ -1,6 +1,5 @@
 using System;
 using EFT.CameraControl;
-using UnityEngine;
 
 namespace HeldScopeOnly;
 
@@ -10,7 +9,7 @@ internal static class OpticRetriceSetOpticSightPatch
 	{
 		try
 		{
-			if ((Object)(object)opticSight == (Object)null)
+			if (opticSight == null)
 			{
 				return true;
 			}

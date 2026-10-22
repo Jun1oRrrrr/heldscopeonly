@@ -11,13 +11,11 @@ internal static class BundleAnimationBonesChangeHandsItemPatch
 		try
 		{
 			HeldScopeOnlyState.RegisterRemoteObservedPlayerView(____observedPlayerView, "remote BundleAnimationBones.ChangeHandsItem");
-			if (!((Object)(object)itemObject == (Object)null) && !((Object)(object)itemObject.Hierarchy == (Object)null))
+			if (!(itemObject == null) && !(itemObject.Hierarchy == null))
 			{
-				Transform transform = itemObject.Hierarchy.GetTransform((ECharacterWeaponBones)5);
+				Transform transform = itemObject.Hierarchy.GetTransform(ECharacterWeaponBones.Weapon_root);
 				HeldScopeOnlyState.RegisterRemoteWeaponRoot(transform);
-				OpticRenderPolicy.ScanHierarchy(
-					transform,
-					"remote BundleAnimationBones.ChangeHandsItem");
+				OpticRenderPolicy.ScanHierarchy(transform, "remote BundleAnimationBones.ChangeHandsItem");
 			}
 		}
 		catch (Exception ex)

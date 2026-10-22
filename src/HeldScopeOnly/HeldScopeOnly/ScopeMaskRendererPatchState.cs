@@ -39,10 +39,8 @@ internal static class ScopeMaskRendererPatchState
 
 	internal static void Initialize()
 	{
-		//IL_01eb: Unknown result type (might be due to invalid IL or missing references)
-		//IL_01f0: Unknown result type (might be due to invalid IL or missing references)
-		_scopeModeInfosField = (FieldInfo)(object)AccessTools.Field((Type)(object)typeof(ScopePrefabCache), "_scopeModeInfos");
-		_currentModeIdField = (FieldInfo)(object)AccessTools.Field((Type)(object)typeof(ScopePrefabCache), "_currentModeId");
+		_scopeModeInfosField = AccessTools.Field(typeof(ScopePrefabCache), "_scopeModeInfos");
+		_currentModeIdField = AccessTools.Field(typeof(ScopePrefabCache), "_currentModeId");
 		if (_scopeModeInfosField == null || _currentModeIdField == null)
 		{
 			throw new MissingFieldException(typeof(ScopePrefabCache).FullName, "_scopeModeInfos");
@@ -52,16 +50,16 @@ internal static class ScopeMaskRendererPatchState
 		{
 			throw new MissingFieldException(typeof(ScopePrefabCache).FullName, "_scopeModeInfos element type");
 		}
-		_scopeModeOpticSightField = (FieldInfo)(object)AccessTools.Field((Type)(object)elementType, "OpticSight");
-		_scopeModeCollimatorSightField = (FieldInfo)(object)AccessTools.Field((Type)(object)elementType, "CollimatorSight");
+		_scopeModeOpticSightField = AccessTools.Field(elementType, "OpticSight");
+		_scopeModeCollimatorSightField = AccessTools.Field(elementType, "CollimatorSight");
 		if (_scopeModeOpticSightField == null || _scopeModeCollimatorSightField == null)
 		{
 			throw new MissingFieldException(elementType.FullName, "OpticSight/CollimatorSight");
 		}
-		_collimatorMaterialField = (FieldInfo)(object)AccessTools.Field((Type)(object)typeof(ScopeMaskRenderer), "_collimatorMaskMeterial");
-		_activeCollimatorSightField = (FieldInfo)(object)AccessTools.Field((Type)(object)typeof(ScopeMaskRenderer), "_activeCollimatorSight");
-		FieldInfo fieldInfo = (FieldInfo)(object)AccessTools.Field((Type)(object)typeof(ScopeMaskRenderer), "_maxCollimatorSqrMagnitude");
-		FieldInfo fieldInfo2 = (FieldInfo)(object)AccessTools.Field((Type)(object)typeof(ScopeMaskRenderer), "_color");
+		_collimatorMaterialField = AccessTools.Field(typeof(ScopeMaskRenderer), "_collimatorMaskMeterial");
+		_activeCollimatorSightField = AccessTools.Field(typeof(ScopeMaskRenderer), "_activeCollimatorSight");
+		FieldInfo fieldInfo = AccessTools.Field(typeof(ScopeMaskRenderer), "_maxCollimatorSqrMagnitude");
+		FieldInfo fieldInfo2 = AccessTools.Field(typeof(ScopeMaskRenderer), "_color");
 		FieldInfo fieldInfo3 = FindCollimatorColorField();
 		if (_collimatorMaterialField == null || _activeCollimatorSightField == null || fieldInfo == null || fieldInfo2 == null || fieldInfo3 == null)
 		{
@@ -74,15 +72,11 @@ internal static class ScopeMaskRendererPatchState
 
 	internal static Material CollimatorMaterial(ScopeMaskRenderer renderer)
 	{
-		//IL_000c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0012: Expected O, but got Unknown
 		return (Material)_collimatorMaterialField.GetValue(renderer);
 	}
 
 	internal static CollimatorSight ActiveCollimatorSight(ScopeMaskRenderer renderer)
 	{
-		//IL_000c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0012: Expected O, but got Unknown
 		return (CollimatorSight)_activeCollimatorSightField.GetValue(renderer);
 	}
 
@@ -91,7 +85,7 @@ internal static class ScopeMaskRendererPatchState
 		opticSight = null;
 		collimatorSight = null;
 		reason = null;
-		if ((Object)(object)cache == (Object)null)
+		if (cache == null)
 		{
 			reason = "local current scope has no prefab cache";
 			return true;
@@ -106,7 +100,7 @@ internal static class ScopeMaskRendererPatchState
 			reason = "could not read local current scope mode: " + ex;
 			return false;
 		}
-		if (_cachedModeValid && object.ReferenceEquals(_cachedModeCache, cache) && _cachedModeId == num)
+		if (_cachedModeValid && (object)_cachedModeCache == cache && _cachedModeId == num)
 		{
 			opticSight = _cachedModeOpticSight;
 			collimatorSight = _cachedModeCollimatorSight;
@@ -139,10 +133,10 @@ internal static class ScopeMaskRendererPatchState
 
 	private static FieldInfo FindCollimatorColorField()
 	{
-		List<FieldInfo> declaredFields = (List<FieldInfo>)(object)AccessTools.GetDeclaredFields((Type)(object)typeof(ScopeMaskRenderer));
-		for (int i = 0; i < declaredFields.Count; i++)
+		List<FieldInfo> list = AccessTools.GetDeclaredFields(typeof(ScopeMaskRenderer));
+		for (int i = 0; i < list.Count; i++)
 		{
-			FieldInfo fieldInfo = declaredFields[i];
+			FieldInfo fieldInfo = list[i];
 			if (!(fieldInfo.FieldType != typeof(Color)) && !(fieldInfo.Name == "_activeCollimatorColor") && fieldInfo.Name.EndsWith("ollimatorColor", StringComparison.Ordinal))
 			{
 				return fieldInfo;

@@ -27,7 +27,7 @@ internal static class HeldScopeOnlyLog
 				_initialized = false;
 				if (HeldScopeOnlyPlugin.Log != null)
 				{
-					HeldScopeOnlyPlugin.Log.LogWarning((object)("Could not create HeldScopeOnly.log: " + ex));
+					HeldScopeOnlyPlugin.Log.LogWarning("Could not create HeldScopeOnly.log: " + ex);
 				}
 			}
 		}
@@ -38,7 +38,7 @@ internal static class HeldScopeOnlyLog
 		string text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " " + message;
 		if (HeldScopeOnlyPlugin.Log != null)
 		{
-			HeldScopeOnlyPlugin.Log.LogInfo((object)("[HeldScopeOnly] " + message));
+			HeldScopeOnlyPlugin.Log.LogInfo("[HeldScopeOnly] " + message);
 		}
 		if (!_initialized || string.IsNullOrEmpty(_path))
 		{

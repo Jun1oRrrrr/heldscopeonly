@@ -10,9 +10,7 @@ internal static class ObservedPlayerFirearmHandsControllerTacticalUpdatePatch
 		try
 		{
 			HeldScopeOnlyState.RegisterRemoteWeaponRoot(__instance._weaponHierarchy);
-			OpticRenderPolicy.ScanHierarchy(
-				__instance._weaponHierarchy,
-				"remote observed-player tactical update");
+			OpticRenderPolicy.ScanHierarchy(__instance._weaponHierarchy, "remote observed-player tactical update");
 		}
 		catch (Exception ex)
 		{

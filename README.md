@@ -16,22 +16,34 @@ same DLL locally. The Fika dedicated server and headless client do not need it.
 
 - SPT version: `4.1.6`
 - Runtime: BepInEx
-- Plugin assembly: `HeldScopeOnly.1.9.1.dll`
+- Plugin assembly: `HeldScopeOnly.1.9.2.dll`
 
 ## Installed Artifact
 
-- Plugin version: `1.9.1`
+- Plugin version: `1.9.2`
 - BepInEx GUID: `local.heldscopeonly`
 - SHA256:
-  `E133CD0DB6AAA4F50E8617D7109BCB9FDBED921640EC1BF3D917E54D4F746A3D`
+  `2CF2164B8EA546561F771B8317704B8076F31B9A73F0709995E5585C55EE73CE`
+- File size: `59392` bytes
 
 The repository contains the complete plugin source. The compiled DLL is
 distributed as a release asset.
 
-All `1.6`, `1.7`, `1.8`, `1.9.0`, and earlier builds are superseded and should
-not be deployed.
+All `1.6`, `1.7`, `1.8`, `1.9.0`, and `1.9.1` builds are superseded and
+should not be deployed.
 
-## 1.9.1 Changes
+## 1.9.2 Changes
+
+- Registers every `StashItemModel.Init` call before any weapon-subclass filter,
+  so all hideout-displayed optics use the same suppression path.
+- Collects every optic below a registered stash model, including its prefab,
+  and retries lenses whose renderer or interior materials bind late.
+- Limits late-lens retries to four candidates per update with bounded attempt
+  and frame windows, avoiding an unbounded hierarchy scan.
+- Bypasses the normal material-state shortcut for hideout optics and reapplies
+  opaque neutral lens materials when vanilla rebuilds the renderer materials.
+- Keeps the `1.9.1` local aiming reset, remote/AI external-lens behavior, and
+  dropped-weapon suppression intact.
 
 - Clears the local optic aiming state immediately on both the frame-polling
   path and the `FirearmController.IsAiming` setter path.
@@ -66,7 +78,10 @@ AI and Fika remote players:
 
 Hideout weapon rack:
 
-- Display optic lens and interior rendering remain suppressed.
+- Every descendant optic is registered from `StashItemModel.Init`.
+- Display optic interior and camera rendering remain suppressed while the
+  external optic stays intact.
+- Late lens bindings are retried only within a fixed-size candidate batch.
 
 ## Patches
 
@@ -110,7 +125,10 @@ Hideout weapon rack:
     - Rejects non-local optics before they replace the local shared reticle.
 
 11. `StashItemModel.Init(GameObject)` postfix
-    - Fades and disables weapon-rack display optics.
+    - Registers the model unconditionally and queues every descendant optic
+      for forced interior suppression.
+    - Retries optics whose lens renderer or materials are not ready during the
+      initial initialization pass.
 
 12. Remote weapon registration
     - Covers `ObservedPlayerView.SetWeaponRoot`, `UpdateWeaponRoot`, and
@@ -132,7 +150,7 @@ Hideout weapon rack:
 Exit Escape From Tarkov and the launcher before replacing the DLL. BepInEx does
 not reload a replaced plugin in an existing process.
 
-Install `HeldScopeOnly.1.9.1.dll` through the BepInEx plugin loader on every
+Install `HeldScopeOnly.1.9.2.dll` through the BepInEx plugin loader on every
 graphical Fika client that observes remote players or AI. Remove all older
 `HeldScopeOnly` DLLs before installing the new build. Do not install it only
 on one observer and expect another client's rendering to change.
@@ -145,7 +163,16 @@ After a complete restart, the BepInEx loader log and the plugin-owned
 `HeldScopeOnly.log` must contain:
 
 ```text
-HeldScopeOnly 1.9.1 loaded
+HeldScopeOnly 1.9.2 loaded
+```
+
+When a hideout item model initializes, expect:
+
+```text
+stash-model-register=
+stash-optic-pending=
+stash-optic-retry=
+stash-optic-enforced=
 ```
 
 When a remote player or AI optic initializes, expect:
@@ -179,12 +206,14 @@ Runtime acceptance:
    transparent.
 4. The local player's held scope still renders normally through its interior.
 5. Closing the local scope still restores DynamicExternalResolution.
-6. The hideout weapon rack still suppresses its scope interior.
+6. The hideout weapon rack keeps its external optic visible and suppresses its
+   scope interior. The log contains `stash-model-register=` and
+   `stash-optic-enforced=` for the displayed weapon.
 
 ## Build
 
 Build against the target game's managed assemblies and BepInEx libraries with
-the included `build-1.9.1.rsp` response file. The response file is configured
+the included `build-1.9.2.rsp` response file. The response file is configured
 for SPT `4.1.6`.
 
 The expected compiler warning is only:
@@ -195,5 +224,5 @@ warning CS2023: /noconfig is specified in a response file and is ignored
 
 ## Rollback
 
-Use `HeldScopeOnly.1.9.0.dll` when rolling back. Replace the current plugin
+Use `HeldScopeOnly.1.9.1.dll` when rolling back. Replace the current plugin
 assembly, remove the plugin-owned log, and restart the game completely.

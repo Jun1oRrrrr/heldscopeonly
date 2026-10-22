@@ -1,5 +1,4 @@
 using System;
-using EFT.CameraControl;
 using EFT.Hideout;
 using UnityEngine;
 
@@ -11,29 +10,7 @@ internal static class StashItemModelInitPatch
 	{
 		try
 		{
-			if (!(__instance is StashWeaponItemModel) && !(__instance is CircleOfCultistsStashWeaponItemModel))
-			{
-				return;
-			}
-			OpticRenderPolicy.ScanHierarchy(
-				((Component)__instance).transform,
-				"hideout weapon display StashItemModel.Init");
-			if ((Object)(object)prefab == (Object)null)
-			{
-				return;
-			}
-			OpticSight[] componentsInChildren = prefab.GetComponentsInChildren<OpticSight>(true);
-			foreach (OpticSight val in componentsInChildren)
-			{
-				if (!((Object)(object)val == (Object)null))
-				{
-					OpticRenderPolicy.ApplyOpticState(
-						val,
-						"hideout weapon display StashItemModel.Init");
-					HeldScopeOnlyState.StashBlocked++;
-					HeldScopeOnlyState.RecordStashLensHidden(val, __instance);
-				}
-			}
+			HeldScopeOnlyState.RegisterStashModel(__instance, prefab);
 		}
 		catch (Exception ex)
 		{

@@ -14,12 +14,12 @@ using UnityEngine.Rendering;
 
 namespace HeldScopeOnly;
 
-[BepInPlugin("local.heldscopeonly", "Held Scope Only", "1.9.1")]
+[BepInPlugin("local.heldscopeonly", "Held Scope Only", "1.9.2")]
 public sealed class HeldScopeOnlyPlugin : BaseUnityPlugin
 {
 	public const string Guid = "local.heldscopeonly";
 
-	public const string Version = "1.9.1";
+	public const string Version = "1.9.2";
 
 	internal static ManualLogSource Log;
 
@@ -51,116 +51,65 @@ public sealed class HeldScopeOnlyPlugin : BaseUnityPlugin
 
 	private void OnEnable()
 	{
-		Camera.onPreCull -= HandleCameraPreCull;
-		Camera.onPreCull += HandleCameraPreCull;
+		Camera.onPreCull = (Camera.CameraCallback)Delegate.Remove(Camera.onPreCull, new Camera.CameraCallback(HandleCameraPreCull));
+		Camera.onPreCull = (Camera.CameraCallback)Delegate.Combine(Camera.onPreCull, new Camera.CameraCallback(HandleCameraPreCull));
 	}
 
 	private void OnDisable()
 	{
-		Camera.onPreCull -= HandleCameraPreCull;
+		Camera.onPreCull = (Camera.CameraCallback)Delegate.Remove(Camera.onPreCull, new Camera.CameraCallback(HandleCameraPreCull));
 	}
 
 	private void HandleCameraPreCull(Camera camera)
 	{
 		try
 		{
-			OpticRenderPolicy.EnforceBeforeCameraRender(
-				camera,
-				"camera pre-cull strict non-local lens enforcement");
+			OpticRenderPolicy.EnforceBeforeCameraRender(camera, "camera pre-cull strict non-local lens enforcement");
 		}
 		catch (Exception ex)
 		{
-			HeldScopeOnlyLog.WriteLine(
-				"camera pre-cull optic enforcement exception: " + ex);
+			HeldScopeOnlyLog.WriteLine("camera pre-cull optic enforcement exception: " + ex);
 		}
 	}
 
 	private void Awake()
 	{
-		//IL_0018: Unknown result type (might be due to invalid IL or missing references)
-		//IL_001e: Expected O, but got Unknown
-		//IL_072b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0738: Expected O, but got Unknown
-		//IL_074b: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0759: Expected O, but got Unknown
-		//IL_076c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_077a: Expected O, but got Unknown
-		//IL_078e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_079c: Expected O, but got Unknown
-		//IL_07b0: Unknown result type (might be due to invalid IL or missing references)
-		//IL_07be: Expected O, but got Unknown
-		//IL_07d2: Unknown result type (might be due to invalid IL or missing references)
-		//IL_07e0: Expected O, but got Unknown
-		//IL_07f4: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0802: Expected O, but got Unknown
-		//IL_0816: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0824: Expected O, but got Unknown
-		//IL_0838: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0846: Expected O, but got Unknown
-		//IL_085a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0868: Expected O, but got Unknown
-		//IL_087d: Unknown result type (might be due to invalid IL or missing references)
-		//IL_088a: Expected O, but got Unknown
-		//IL_089e: Unknown result type (might be due to invalid IL or missing references)
-		//IL_08b3: Unknown result type (might be due to invalid IL or missing references)
-		//IL_08c0: Expected O, but got Unknown
-		//IL_08c0: Expected O, but got Unknown
-		//IL_08d5: Unknown result type (might be due to invalid IL or missing references)
-		//IL_08e2: Expected O, but got Unknown
-		//IL_08f6: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0904: Expected O, but got Unknown
-		//IL_0918: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0926: Expected O, but got Unknown
-		//IL_093a: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0948: Expected O, but got Unknown
-		//IL_095c: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0971: Unknown result type (might be due to invalid IL or missing references)
-		//IL_097e: Expected O, but got Unknown
-		//IL_097e: Expected O, but got Unknown
-		//IL_0993: Unknown result type (might be due to invalid IL or missing references)
-		//IL_09a0: Expected O, but got Unknown
-		//IL_09b5: Unknown result type (might be due to invalid IL or missing references)
-		//IL_09c2: Expected O, but got Unknown
-		//IL_09d7: Unknown result type (might be due to invalid IL or missing references)
-		//IL_09e4: Expected O, but got Unknown
-		//IL_09f9: Unknown result type (might be due to invalid IL or missing references)
-		//IL_0a06: Expected O, but got Unknown
 		Log = Logger;
 		Instance = this;
 		HeldScopeOnlyLog.Initialize();
 		try
 		{
-			Harmony val = new Harmony("local.heldscopeonly");
-			MethodInfo methodInfo = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(CameraManager), "SetPlayer", (Type[])(object)new Type[1] { typeof(Player) }, (Type[])null);
-			MethodInfo methodInfo2 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(OpticCameraManager), "OnOpticSightEnabled", (Type[])(object)new Type[1] { typeof(OpticSight) }, (Type[])null);
-			MethodInfo methodInfo3 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(OpticSight), "LensFade", (Type[])(object)new Type[1] { typeof(bool) }, (Type[])null);
-			MethodInfo methodInfo4 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(OpticSight), "OnEnable", (Type[])null, (Type[])null);
-			MethodInfo methodInfo5 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(OpticSight), "OnDisable", (Type[])null, (Type[])null);
-			MethodInfo methodInfo6 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(ScopeMaskRenderer), "DrawOptic", (Type[])(object)new Type[1] { typeof(CommandBuffer) }, (Type[])null);
-			MethodInfo methodInfo7 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(ScopeMaskRenderer), "DrawCollimators", (Type[])(object)new Type[2]
+			Harmony harmony = new Harmony("local.heldscopeonly");
+			MethodInfo methodInfo = AccessTools.Method(typeof(CameraManager), "SetPlayer", new Type[1] { typeof(Player) });
+			MethodInfo methodInfo2 = AccessTools.Method(typeof(OpticCameraManager), "OnOpticSightEnabled", new Type[1] { typeof(OpticSight) });
+			MethodInfo methodInfo3 = AccessTools.Method(typeof(OpticSight), "LensFade", new Type[1] { typeof(bool) });
+			MethodInfo methodInfo4 = AccessTools.Method(typeof(OpticSight), "OnEnable");
+			MethodInfo methodInfo5 = AccessTools.Method(typeof(OpticSight), "OnDisable");
+			MethodInfo methodInfo6 = AccessTools.Method(typeof(ScopeMaskRenderer), "DrawOptic", new Type[1] { typeof(CommandBuffer) });
+			MethodInfo methodInfo7 = AccessTools.Method(typeof(ScopeMaskRenderer), "DrawCollimators", new Type[2]
 			{
 				typeof(CommandBuffer),
 				typeof(Camera)
-			}, (Type[])null);
-			MethodInfo methodInfo8 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(ScopeMaskRenderer), "DrawActiveCollimator", (Type[])(object)new Type[1] { typeof(CommandBuffer) }, (Type[])null);
-			MethodInfo methodInfo9 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(OpticRetrice), "UpdateTransform", (Type[])(object)new Type[1] { typeof(OpticSight) }, (Type[])null);
-			MethodInfo methodInfo10 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(OpticRetrice), "SetOpticSight", (Type[])(object)new Type[1] { typeof(OpticSight) }, (Type[])null);
-			MethodInfo methodInfo11 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(StashItemModel), "Init", (Type[])(object)new Type[1] { typeof(GameObject) }, (Type[])null);
-			MethodInfo methodInfo12 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(ObservedPlayerFirearmHandsController), "Initialize", (Type[])(object)new Type[2]
+			});
+			MethodInfo methodInfo8 = AccessTools.Method(typeof(ScopeMaskRenderer), "DrawActiveCollimator", new Type[1] { typeof(CommandBuffer) });
+			MethodInfo methodInfo9 = AccessTools.Method(typeof(OpticRetrice), "UpdateTransform", new Type[1] { typeof(OpticSight) });
+			MethodInfo methodInfo10 = AccessTools.Method(typeof(OpticRetrice), "SetOpticSight", new Type[1] { typeof(OpticSight) });
+			MethodInfo methodInfo11 = AccessTools.Method(typeof(StashItemModel), "Init", new Type[1] { typeof(GameObject) });
+			MethodInfo methodInfo12 = AccessTools.Method(typeof(ObservedPlayerFirearmHandsController), "Initialize", new Type[2]
 			{
 				typeof(WeaponPrefab),
 				typeof(Weapon)
-			}, (Type[])null);
-			MethodInfo methodInfo13 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(ObservedPlayerFirearmHandsController), "UpdateTacticalComboVisualControllers", (Type[])null, (Type[])null);
-			MethodInfo methodInfo14 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(ObservedPlayerFirearmHandsController), "UpdateScopes", (Type[])null, (Type[])null);
-			MethodInfo methodInfo17 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(Firearms), "UpdateModsVisualControllers", (Type[])null, (Type[])null);
-			MethodInfo methodInfo18 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(ObservedPlayerView), "SetWeaponRoot", (Type[])(object)new Type[1] { typeof(Transform) }, (Type[])null);
-			MethodInfo methodInfo19 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(ObservedPlayerView), "UpdateWeaponRoot", (Type[])null, (Type[])null);
-			MethodInfo methodInfo20 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(ObservedPlayerView), "Initialization", (Type[])(object)new Type[1] { typeof(ObservedPlayerSpawnMessage) }, (Type[])null);
-			MethodInfo methodInfo21 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(BundleAnimationBones), "ChangeHandsItem", (Type[])(object)new Type[1] { typeof(WeaponPrefab) }, (Type[])null);
-			MethodInfo methodInfo22 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(SightModVisualControllers), "UpdateSightMode", (Type[])(object)new Type[1] { typeof(bool) }, (Type[])null);
-			MethodInfo methodInfo23 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(ScopePrefabCache), "SetMode", (Type[])(object)new Type[1] { typeof(int) }, (Type[])null);
-			MethodInfo methodInfo24 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(LootItem), "Init", (Type[])(object)new Type[7]
+			});
+			MethodInfo methodInfo13 = AccessTools.Method(typeof(ObservedPlayerFirearmHandsController), "UpdateTacticalComboVisualControllers");
+			MethodInfo methodInfo14 = AccessTools.Method(typeof(ObservedPlayerFirearmHandsController), "UpdateScopes");
+			MethodInfo methodInfo15 = AccessTools.Method(typeof(Firearms), "UpdateModsVisualControllers");
+			MethodInfo methodInfo16 = AccessTools.Method(typeof(ObservedPlayerView), "SetWeaponRoot", new Type[1] { typeof(Transform) });
+			MethodInfo methodInfo17 = AccessTools.Method(typeof(ObservedPlayerView), "UpdateWeaponRoot");
+			MethodInfo methodInfo18 = AccessTools.Method(typeof(ObservedPlayerView), "Initialization", new Type[1] { typeof(ObservedPlayerSpawnMessage) });
+			MethodInfo methodInfo19 = AccessTools.Method(typeof(BundleAnimationBones), "ChangeHandsItem", new Type[1] { typeof(WeaponPrefab) });
+			MethodInfo methodInfo20 = AccessTools.Method(typeof(SightModVisualControllers), "UpdateSightMode", new Type[1] { typeof(bool) });
+			MethodInfo methodInfo21 = AccessTools.Method(typeof(ScopePrefabCache), "SetMode", new Type[1] { typeof(int) });
+			MethodInfo methodInfo22 = AccessTools.Method(typeof(LootItem), "Init", new Type[7]
 			{
 				typeof(Item),
 				typeof(string),
@@ -169,12 +118,12 @@ public sealed class HeldScopeOnlyPlugin : BaseUnityPlugin
 				typeof(MongoID[]),
 				typeof(string),
 				typeof(bool)
-			}, (Type[])null);
-			MethodInfo methodInfo25 = (MethodInfo)(object)AccessTools.Method((Type)(object)typeof(LootItem), "SetItemAndRigidbody", (Type[])(object)new Type[2]
+			});
+			MethodInfo methodInfo23 = AccessTools.Method(typeof(LootItem), "SetItemAndRigidbody", new Type[2]
 			{
 				typeof(Item),
 				typeof(Rigidbody)
-			}, (Type[])null);
+			});
 			if (methodInfo == null)
 			{
 				throw new MissingMethodException(typeof(CameraManager).FullName, "SetPlayer");
@@ -231,76 +180,76 @@ public sealed class HeldScopeOnlyPlugin : BaseUnityPlugin
 			{
 				throw new MissingMethodException(typeof(ObservedPlayerFirearmHandsController).FullName, "UpdateScopes");
 			}
-			if (methodInfo17 == null)
+			if (methodInfo15 == null)
 			{
 				throw new MissingMethodException(typeof(Firearms).FullName, "UpdateModsVisualControllers");
 			}
-			if (methodInfo18 == null)
+			if (methodInfo16 == null)
 			{
 				throw new MissingMethodException(typeof(ObservedPlayerView).FullName, "SetWeaponRoot");
 			}
-			if (methodInfo19 == null)
+			if (methodInfo17 == null)
 			{
 				throw new MissingMethodException(typeof(ObservedPlayerView).FullName, "UpdateWeaponRoot");
 			}
-			if (methodInfo20 == null)
+			if (methodInfo18 == null)
 			{
 				throw new MissingMethodException(typeof(ObservedPlayerView).FullName, "Initialization");
 			}
-			if (methodInfo21 == null)
+			if (methodInfo19 == null)
 			{
 				throw new MissingMethodException(typeof(BundleAnimationBones).FullName, "ChangeHandsItem");
 			}
-			if (methodInfo22 == null)
+			if (methodInfo20 == null)
 			{
 				throw new MissingMethodException(typeof(SightModVisualControllers).FullName, "UpdateSightMode");
 			}
-			if (methodInfo23 == null)
+			if (methodInfo21 == null)
 			{
 				throw new MissingMethodException(typeof(ScopePrefabCache).FullName, "SetMode");
 			}
-			if (methodInfo24 == null)
+			if (methodInfo22 == null)
 			{
 				throw new MissingMethodException(typeof(LootItem).FullName, "Init");
 			}
-			if (methodInfo25 == null)
+			if (methodInfo23 == null)
 			{
 				throw new MissingMethodException(typeof(LootItem).FullName, "SetItemAndRigidbody");
 			}
 			HeldScopeOnlyState.Initialize();
 			ScopeMaskRendererPatchState.Initialize();
-			val.Patch((MethodBase)(object)methodInfo, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(CameraManagerSetPlayerPatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo2, new HarmonyMethod((Type)(object)typeof(OpticCameraManagerEnablePatch), "Prefix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo3, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(OpticSightLensFadePatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo4, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(OpticSightOnEnablePatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo5, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(OpticSightOnDisablePatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo6, new HarmonyMethod((Type)(object)typeof(ScopeMaskRendererDrawOpticPatch), "Prefix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo7, new HarmonyMethod((Type)(object)typeof(ScopeMaskRendererDrawCollimatorsPatch), "Prefix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo8, new HarmonyMethod((Type)(object)typeof(ScopeMaskRendererDrawActiveCollimatorPatch), "Prefix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo9, new HarmonyMethod((Type)(object)typeof(OpticRetriceUpdateTransformPatch), "Prefix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo10, new HarmonyMethod((Type)(object)typeof(OpticRetriceSetOpticSightPatch), "Prefix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo11, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(StashItemModelInitPatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo12, new HarmonyMethod((Type)(object)typeof(ObservedPlayerFirearmHandsControllerInitPatch), "Prefix", (Type[])null), new HarmonyMethod((Type)(object)typeof(ObservedPlayerFirearmHandsControllerInitPatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo13, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(ObservedPlayerFirearmHandsControllerTacticalUpdatePatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo14, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(ObservedPlayerFirearmHandsControllerUpdateScopesPatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo17, new HarmonyMethod((Type)(object)typeof(FirearmsUpdateModsVisualControllersPatch), "Prefix", (Type[])null), new HarmonyMethod((Type)(object)typeof(FirearmsUpdateModsVisualControllersPatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo18, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(ObservedPlayerViewSetWeaponRootPatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo19, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(ObservedPlayerViewUpdateWeaponRootPatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo20, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(ObservedPlayerViewInitializationPatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo21, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(BundleAnimationBonesChangeHandsItemPatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo22, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(SightModVisualControllersUpdateSightModePatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo23, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(ScopePrefabCacheSetModePatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo24, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(LootItemInitPatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			val.Patch((MethodBase)(object)methodInfo25, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(LootItemSetItemAndRigidbodyPatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			PatchFirearmAimingSetter(val);
-			string text = "HeldScopeOnly 1.9.1 loaded; only the local currently held optic may show its interior while aiming; every non-local/AI/Fika/dropped/hideout scope interior is blocked unconditionally with cloned opaque neutral textures and _SwitchToSight=0.97; missing DynamicExternalResolution is disabled after one probe; hands-item switching resets local optic aim state immediately.";
-			Log.LogInfo((object)text);
+			harmony.Patch(methodInfo, null, new HarmonyMethod(typeof(CameraManagerSetPlayerPatch), "Postfix"));
+			harmony.Patch(methodInfo2, new HarmonyMethod(typeof(OpticCameraManagerEnablePatch), "Prefix"));
+			harmony.Patch(methodInfo3, null, new HarmonyMethod(typeof(OpticSightLensFadePatch), "Postfix"));
+			harmony.Patch(methodInfo4, null, new HarmonyMethod(typeof(OpticSightOnEnablePatch), "Postfix"));
+			harmony.Patch(methodInfo5, null, new HarmonyMethod(typeof(OpticSightOnDisablePatch), "Postfix"));
+			harmony.Patch(methodInfo6, new HarmonyMethod(typeof(ScopeMaskRendererDrawOpticPatch), "Prefix"));
+			harmony.Patch(methodInfo7, new HarmonyMethod(typeof(ScopeMaskRendererDrawCollimatorsPatch), "Prefix"));
+			harmony.Patch(methodInfo8, new HarmonyMethod(typeof(ScopeMaskRendererDrawActiveCollimatorPatch), "Prefix"));
+			harmony.Patch(methodInfo9, new HarmonyMethod(typeof(OpticRetriceUpdateTransformPatch), "Prefix"));
+			harmony.Patch(methodInfo10, new HarmonyMethod(typeof(OpticRetriceSetOpticSightPatch), "Prefix"));
+			harmony.Patch(methodInfo11, null, new HarmonyMethod(typeof(StashItemModelInitPatch), "Postfix"));
+			harmony.Patch(methodInfo12, new HarmonyMethod(typeof(ObservedPlayerFirearmHandsControllerInitPatch), "Prefix"), new HarmonyMethod(typeof(ObservedPlayerFirearmHandsControllerInitPatch), "Postfix"));
+			harmony.Patch(methodInfo13, null, new HarmonyMethod(typeof(ObservedPlayerFirearmHandsControllerTacticalUpdatePatch), "Postfix"));
+			harmony.Patch(methodInfo14, null, new HarmonyMethod(typeof(ObservedPlayerFirearmHandsControllerUpdateScopesPatch), "Postfix"));
+			harmony.Patch(methodInfo15, new HarmonyMethod(typeof(FirearmsUpdateModsVisualControllersPatch), "Prefix"), new HarmonyMethod(typeof(FirearmsUpdateModsVisualControllersPatch), "Postfix"));
+			harmony.Patch(methodInfo16, null, new HarmonyMethod(typeof(ObservedPlayerViewSetWeaponRootPatch), "Postfix"));
+			harmony.Patch(methodInfo17, null, new HarmonyMethod(typeof(ObservedPlayerViewUpdateWeaponRootPatch), "Postfix"));
+			harmony.Patch(methodInfo18, null, new HarmonyMethod(typeof(ObservedPlayerViewInitializationPatch), "Postfix"));
+			harmony.Patch(methodInfo19, null, new HarmonyMethod(typeof(BundleAnimationBonesChangeHandsItemPatch), "Postfix"));
+			harmony.Patch(methodInfo20, null, new HarmonyMethod(typeof(SightModVisualControllersUpdateSightModePatch), "Postfix"));
+			harmony.Patch(methodInfo21, null, new HarmonyMethod(typeof(ScopePrefabCacheSetModePatch), "Postfix"));
+			harmony.Patch(methodInfo22, null, new HarmonyMethod(typeof(LootItemInitPatch), "Postfix"));
+			harmony.Patch(methodInfo23, null, new HarmonyMethod(typeof(LootItemSetItemAndRigidbodyPatch), "Postfix"));
+			PatchFirearmAimingSetter(harmony);
+			string text = "HeldScopeOnly 1.9.2 loaded; only the local currently held optic may show its interior while aiming; every non-local/AI/Fika/dropped/hideout scope interior is blocked unconditionally with cloned opaque neutral textures and _SwitchToSight=0.97; every StashItemModel registers unconditionally, late-bound hideout lenses retry in a bounded batch, and hideout suppression bypasses the material-state short circuit.";
+			Log.LogInfo(text);
 			HeldScopeOnlyLog.WriteLine(text);
 		}
 		catch (Exception ex)
 		{
 			string text2 = "HeldScopeOnly failed to initialize; plugin inactive: " + ex;
-			Log.LogError((object)text2);
+			Log.LogError(text2);
 			HeldScopeOnlyLog.WriteLine(text2);
 		}
 	}
@@ -309,77 +258,69 @@ public sealed class HeldScopeOnlyPlugin : BaseUnityPlugin
 	{
 		try
 		{
-			Type type = (Type)(object)AccessTools.TypeByName("EFT.Player+FirearmController");
+			Type type = AccessTools.TypeByName("EFT.Player+FirearmController");
 			if (type == null)
 			{
-				type = (Type)(object)AccessTools.TypeByName("EFT.Player.FirearmController");
+				type = AccessTools.TypeByName("EFT.Player.FirearmController");
 			}
 			if (type == null)
 			{
 				throw new MissingMemberException("EFT.Player", "FirearmController");
 			}
-			MethodInfo methodInfo = (MethodInfo)(object)AccessTools.PropertySetter((Type)(object)type, "IsAiming");
+			MethodInfo methodInfo = AccessTools.PropertySetter(type, "IsAiming");
 			if (methodInfo == null)
 			{
 				throw new MissingMethodException(type.FullName, "set_IsAiming");
 			}
-			harmony.Patch((MethodBase)(object)methodInfo, (HarmonyMethod)null, new HarmonyMethod((Type)(object)typeof(FirearmControllerSetIsAimingPatch), "Postfix", (Type[])null), (HarmonyMethod)null, (HarmonyMethod)null, (HarmonyMethod)null);
-			string text = "FirearmController.IsAiming setter patched; close-scope restore trigger active.";
-			HeldScopeOnlyLog.WriteLine(text);
+			harmony.Patch(methodInfo, null, new HarmonyMethod(typeof(FirearmControllerSetIsAimingPatch), "Postfix"));
+			string message = "FirearmController.IsAiming setter patched; close-scope restore trigger active.";
+			HeldScopeOnlyLog.WriteLine(message);
 		}
 		catch (Exception ex)
 		{
 			string text = "FirearmController.IsAiming setter patch installation failed; falling back to frame polling: " + ex;
-			Log.LogWarning((object)text);
+			Log.LogWarning(text);
 			HeldScopeOnlyLog.WriteLine(text);
 		}
 	}
 
 	private void Update()
 	{
-		bool aiming;
-		bool optic;
-		if (!HeldScopeOnlyState.TryGetLocalOpticAiming(out aiming, out optic))
+		OpticRenderPolicy.ProcessPendingStashOptics();
+		if (!HeldScopeOnlyState.TryGetLocalOpticAiming(out var aiming, out var optic))
 		{
 			return;
 		}
-		bool flag = aiming && optic;
-		if (flag)
+		if (aiming & optic)
 		{
 			if (!_lastLocalOpticAiming)
 			{
-				OpticRenderPolicy.RestoreCurrentLocalOptic(
-					"procedural-weapon-animation aim entered");
+				OpticRenderPolicy.RestoreCurrentLocalOptic("procedural-weapon-animation aim entered");
 			}
 			MarkLocalOpticAimEntered("procedural-weapon-animation");
-			return;
 		}
-		if (!_lastLocalOpticAiming)
+		else if (_lastLocalOpticAiming)
 		{
-			return;
+			OpticRenderPolicy.HideCurrentLocalOptic("procedural-weapon-animation aim ended");
+			_lastLocalOpticAiming = false;
+			ScheduleExternalResolutionRestore("local-optic-aim-ended-update", 1);
 		}
-		OpticRenderPolicy.HideCurrentLocalOptic(
-			"procedural-weapon-animation aim ended");
-		_lastLocalOpticAiming = false;
-		ScheduleExternalResolutionRestore("local-optic-aim-ended-update", 1);
 	}
 
 	private void LateUpdate()
 	{
-		if (!_externalResolutionRestorePending || Time.frameCount < _externalResolutionRestoreDueFrame)
+		if (_externalResolutionRestorePending && Time.frameCount >= _externalResolutionRestoreDueFrame)
 		{
-			return;
-		}
-		if (HeldScopeOnlyState.TryGetLocalFirearmAiming(out bool aiming) && aiming)
-		{
-			CancelPendingExternalResolutionRestore("local-firearm-still-aiming");
-			return;
-		}
-		if (RestoreExternalResolution("local-firearm-aiming-ended"))
-		{
-			_externalResolutionRestorePending = false;
-			_externalResolutionRestoreDueFrame = -1;
-			_lastLocalOpticAiming = false;
+			if (HeldScopeOnlyState.TryGetLocalFirearmAiming(out var aiming) & aiming)
+			{
+				CancelPendingExternalResolutionRestore("local-firearm-still-aiming");
+			}
+			else if (RestoreExternalResolution("local-firearm-aiming-ended"))
+			{
+				_externalResolutionRestorePending = false;
+				_externalResolutionRestoreDueFrame = -1;
+				_lastLocalOpticAiming = false;
+			}
 		}
 	}
 
@@ -395,30 +336,28 @@ public sealed class HeldScopeOnlyPlugin : BaseUnityPlugin
 
 	private void ScheduleExternalResolutionRestore(string reason, int delayFrames)
 	{
-		if (_externalResolutionUnavailable)
+		if (!_externalResolutionUnavailable)
 		{
-			return;
+			int num = Time.frameCount + Math.Max(0, delayFrames);
+			if (_externalResolutionRestorePending)
+			{
+				_externalResolutionRestoreDueFrame = Math.Min(_externalResolutionRestoreDueFrame, num);
+				return;
+			}
+			_externalResolutionRestorePending = true;
+			_externalResolutionRestoreDueFrame = num;
+			HeldScopeOnlyLog.WriteLine("restore-deferred-frame=" + num + " reason=\"" + reason + "\"");
 		}
-		int num = Time.frameCount + Math.Max(0, delayFrames);
-		if (_externalResolutionRestorePending)
-		{
-			_externalResolutionRestoreDueFrame = Math.Min(_externalResolutionRestoreDueFrame, num);
-			return;
-		}
-		_externalResolutionRestorePending = true;
-		_externalResolutionRestoreDueFrame = num;
-		HeldScopeOnlyLog.WriteLine("restore-deferred-frame=" + num + " reason=\"" + reason + "\"");
 	}
 
 	private void CancelPendingExternalResolutionRestore(string reason)
 	{
-		if (!_externalResolutionRestorePending)
+		if (_externalResolutionRestorePending)
 		{
-			return;
+			_externalResolutionRestorePending = false;
+			_externalResolutionRestoreDueFrame = -1;
+			HeldScopeOnlyLog.WriteLine("restore-cancelled reason=\"" + reason + "\"");
 		}
-		_externalResolutionRestorePending = false;
-		_externalResolutionRestoreDueFrame = -1;
-		HeldScopeOnlyLog.WriteLine("restore-cancelled reason=\"" + reason + "\"");
 	}
 
 	private bool RestoreExternalResolution(string reason)
@@ -466,10 +405,10 @@ public sealed class HeldScopeOnlyPlugin : BaseUnityPlugin
 		}
 		try
 		{
-			Type type = (Type)(object)AccessTools.TypeByName(ExternalResolutionTypeName);
+			Type type = AccessTools.TypeByName("DynamicExternalResolution.DynamicExternalResolutionPatches");
 			if (type != null)
 			{
-				_externalResolutionRestoreMethod = (MethodInfo)(object)AccessTools.Method((Type)(object)type, ExternalResolutionRestoreMethodName, Type.EmptyTypes, (Type[])null);
+				_externalResolutionRestoreMethod = AccessTools.Method(type, "SetResolutionDefault", Type.EmptyTypes);
 			}
 		}
 		catch (Exception ex)
@@ -481,7 +420,7 @@ public sealed class HeldScopeOnlyPlugin : BaseUnityPlugin
 			if (!_externalResolutionRestoreMethodLogged)
 			{
 				_externalResolutionRestoreMethodLogged = true;
-				HeldScopeOnlyLog.WriteLine("restore-method-found=" + ExternalResolutionTypeName + "." + ExternalResolutionRestoreMethodName);
+				HeldScopeOnlyLog.WriteLine("restore-method-found=DynamicExternalResolution.DynamicExternalResolutionPatches.SetResolutionDefault");
 			}
 			return true;
 		}
@@ -490,15 +429,15 @@ public sealed class HeldScopeOnlyPlugin : BaseUnityPlugin
 		{
 			_externalResolutionUnavailableLogged = true;
 			string text = "external-resolution-not-installed; restore hook permanently inactive after one probe";
-			Log.LogWarning((object)text);
+			Log.LogWarning(text);
 			HeldScopeOnlyLog.WriteLine(text);
 		}
 		return false;
 	}
 
-	private void HandleFirearmAimingChanged(EFT.Player.FirearmController controller, bool value)
+	private void HandleFirearmAimingChanged(Player.FirearmController controller, bool value)
 	{
-		if ((Object)(object)controller == (Object)null)
+		if (controller == null)
 		{
 			return;
 		}
@@ -507,41 +446,39 @@ public sealed class HeldScopeOnlyPlugin : BaseUnityPlugin
 		{
 			return;
 		}
-		bool aiming;
-		bool optic;
-		bool flag = HeldScopeOnlyState.TryGetLocalOpticAiming(out aiming, out optic);
-		string text = "setter-aiming=" + (value ? "true" : "false") + " is-local=true firearm-aiming=" + (controller.IsAiming ? "true" : "false") + " pwa-read=" + (flag ? "true" : "false") + " pwa-aiming=" + (aiming ? "true" : "false") + " optic=" + (optic ? "true" : "false") + " frame=" + Time.frameCount;
-		HeldScopeOnlyLog.WriteLine(text);
+		bool flag = HeldScopeOnlyState.TryGetLocalOpticAiming(out var aiming, out var optic);
+		string message = "setter-aiming=" + (value ? "true" : "false") + " is-local=true firearm-aiming=" + (controller.IsAiming ? "true" : "false") + " pwa-read=" + (flag ? "true" : "false") + " pwa-aiming=" + (aiming ? "true" : "false") + " optic=" + (optic ? "true" : "false") + " frame=" + Time.frameCount;
+		HeldScopeOnlyLog.WriteLine(message);
 		if (value)
 		{
 			CancelPendingExternalResolutionRestore("local-firearm-aiming-resumed");
-			if (flag && aiming && optic)
+			if (flag & aiming & optic)
 			{
-				OpticRenderPolicy.RestoreCurrentLocalOptic(
-					"FirearmController.IsAiming=true");
+				OpticRenderPolicy.RestoreCurrentLocalOptic("FirearmController.IsAiming=true");
 				MarkLocalOpticAimEntered("FirearmController.IsAiming");
 			}
-			return;
 		}
-		OpticRenderPolicy.HideCurrentLocalOptic(
-			"FirearmController.IsAiming=false");
-		if (_lastLocalOpticAiming)
+		else
 		{
-			_lastLocalOpticAiming = false;
-			ScheduleExternalResolutionRestore("FirearmController.IsAiming=false", 1);
+			OpticRenderPolicy.HideCurrentLocalOptic("FirearmController.IsAiming=false");
+			if (_lastLocalOpticAiming)
+			{
+				_lastLocalOpticAiming = false;
+				ScheduleExternalResolutionRestore("FirearmController.IsAiming=false", 1);
+			}
 		}
 	}
 
-	internal static void NotifyFirearmAimingChanged(EFT.Player.FirearmController controller, bool value)
+	internal static void NotifyFirearmAimingChanged(Player.FirearmController controller, bool value)
 	{
-		HeldScopeOnlyPlugin heldScopeOnlyPlugin = Instance;
-		if (heldScopeOnlyPlugin == null)
+		HeldScopeOnlyPlugin instance = Instance;
+		if (instance == null)
 		{
 			return;
 		}
 		try
 		{
-			heldScopeOnlyPlugin.HandleFirearmAimingChanged(controller, value);
+			instance.HandleFirearmAimingChanged(controller, value);
 		}
 		catch (Exception ex)
 		{
@@ -556,11 +493,11 @@ public sealed class HeldScopeOnlyPlugin : BaseUnityPlugin
 			_lastLocalOpticAiming = false;
 			RestoreExternalResolution("plugin-destroyed");
 		}
-		if (object.ReferenceEquals(Instance, this))
+		if ((object)Instance == this)
 		{
 			Instance = null;
 		}
-		HeldScopeOnlyLog.WriteLine("plugin destroyed; accepted=" + HeldScopeOnlyState.Accepted + " rejected=" + HeldScopeOnlyState.Rejected + " lensBlocked=" + HeldScopeOnlyState.LensBlocked + " stashBlocked=" + HeldScopeOnlyState.StashBlocked + " stashEnableBlocked=" + HeldScopeOnlyState.StashEnableBlocked + " stashDisableBlocked=" + HeldScopeOnlyState.StashDisableBlocked + " drawOpticBlocked=" + HeldScopeOnlyState.DrawOpticBlocked + " drawCollimatorBlocked=" + HeldScopeOnlyState.DrawCollimatorBlocked + " drawActiveCollimatorBlocked=" + HeldScopeOnlyState.DrawActiveCollimatorBlocked + " reticleChecked=" + HeldScopeOnlyState.ReticleChecked + " reticleBlocked=" + HeldScopeOnlyState.ReticleBlocked + " remoteRegistered=" + HeldScopeOnlyState.RemoteRegistered + " remoteOpticsFound=" + HeldScopeOnlyState.RemoteOpticsFound + " remoteLensesShown=" + HeldScopeOnlyState.RemoteLensesShown + " remoteViewFallbacks=" + HeldScopeOnlyState.RemoteViewFallbacks + " policyChecks=" + OpticRenderPolicy.PolicyChecks + " policyAllowed=" + OpticRenderPolicy.PolicyAllowed + " policyBlocked=" + OpticRenderPolicy.PolicyBlocked + " lensesSuppressed=" + OpticRenderPolicy.LensesSuppressed + " lensesRestored=" + OpticRenderPolicy.LensesRestored + " hierarchyScans=" + OpticRenderPolicy.HierarchyScans + " opticsVisited=" + OpticRenderPolicy.OpticsVisited + " frameEnforcementPasses=" + OpticRenderPolicy.FrameEnforcementPasses + " frameEnforcedOptics=" + OpticRenderPolicy.FrameEnforcedOptics + " camTexRenderersTracked=" + OpticRenderPolicy.CamTexRenderersTracked + " camTexRenderersSuppressed=" + OpticRenderPolicy.CamTexRenderersSuppressed + " camTexRenderersAllowed=" + OpticRenderPolicy.CamTexRenderersAllowed + " interiorTexturePropertiesBlocked=" + OpticRenderPolicy.InteriorTexturePropertiesBlocked);
+		HeldScopeOnlyLog.WriteLine("plugin destroyed; accepted=" + HeldScopeOnlyState.Accepted + " rejected=" + HeldScopeOnlyState.Rejected + " lensBlocked=" + HeldScopeOnlyState.LensBlocked + " stashBlocked=" + HeldScopeOnlyState.StashBlocked + " stashEnableBlocked=" + HeldScopeOnlyState.StashEnableBlocked + " stashDisableBlocked=" + HeldScopeOnlyState.StashDisableBlocked + " stashModelsRegistered=" + HeldScopeOnlyState.StashModelsRegistered + " stashOpticsQueued=" + HeldScopeOnlyState.StashOpticsQueued + " stashOpticsRetried=" + HeldScopeOnlyState.StashOpticsRetried + " stashOpticsEnforced=" + HeldScopeOnlyState.StashOpticsEnforced + " stashOpticsUnresolved=" + HeldScopeOnlyState.StashOpticsUnresolved + " drawOpticBlocked=" + HeldScopeOnlyState.DrawOpticBlocked + " drawCollimatorBlocked=" + HeldScopeOnlyState.DrawCollimatorBlocked + " drawActiveCollimatorBlocked=" + HeldScopeOnlyState.DrawActiveCollimatorBlocked + " reticleChecked=" + HeldScopeOnlyState.ReticleChecked + " reticleBlocked=" + HeldScopeOnlyState.ReticleBlocked + " remoteRegistered=" + HeldScopeOnlyState.RemoteRegistered + " remoteOpticsFound=" + HeldScopeOnlyState.RemoteOpticsFound + " remoteLensesShown=" + HeldScopeOnlyState.RemoteLensesShown + " remoteViewFallbacks=" + HeldScopeOnlyState.RemoteViewFallbacks + " policyChecks=" + OpticRenderPolicy.PolicyChecks + " policyAllowed=" + OpticRenderPolicy.PolicyAllowed + " policyBlocked=" + OpticRenderPolicy.PolicyBlocked + " lensesSuppressed=" + OpticRenderPolicy.LensesSuppressed + " lensesRestored=" + OpticRenderPolicy.LensesRestored + " hierarchyScans=" + OpticRenderPolicy.HierarchyScans + " opticsVisited=" + OpticRenderPolicy.OpticsVisited + " frameEnforcementPasses=" + OpticRenderPolicy.FrameEnforcementPasses + " frameEnforcedOptics=" + OpticRenderPolicy.FrameEnforcedOptics + " camTexRenderersTracked=" + OpticRenderPolicy.CamTexRenderersTracked + " camTexRenderersSuppressed=" + OpticRenderPolicy.CamTexRenderersSuppressed + " camTexRenderersAllowed=" + OpticRenderPolicy.CamTexRenderersAllowed + " interiorTexturePropertiesBlocked=" + OpticRenderPolicy.InteriorTexturePropertiesBlocked);
 		OpticRenderPolicy.ReleaseResources();
 	}
 }
